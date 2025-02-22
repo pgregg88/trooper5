@@ -40,13 +40,26 @@ export async function createRealtimeConnection(
   try {
     const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
     pc.addTrack(ms.getTracks()[0]);
-  } catch (micError) {
+  } catch (error) {
     throw new Error(
       "Unable to access your microphone. This could be because:\n1. You haven't granted microphone permissions\n2. You're not using a secure connection\n\nTry accessing via:\n- http://localhost:3000 (for local development)\n- https://[your-ip]:3443 (for network access)"
     );
   }
 
   const dc = pc.createDataChannel("oai-events");
+
+  dc.addEventListener("message", async (e: MessageEvent) => {
+    const data = JSON.parse(e.data);
+    // Handle audio buffer events
+    if (audioProcessor.isActive()) {
+      if (data.type === "output_audio_buffer.started") {
+        await audioProcessor.playMicClick(true);
+      } else if (data.type === "output_audio_buffer.stopped") {
+        await audioProcessor.playMicClick(false);
+        await audioProcessor.playStaticEffect();
+      }
+    }
+  });
 
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);

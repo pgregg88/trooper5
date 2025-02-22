@@ -58,7 +58,10 @@ export const voicePatternAnalysisLogic = async (args: any) => {
     "move along",
     "do not need",
     "tell me about",
-    "you do not"
+    "you do not",
+    "not the person",  // Classic "these are not the droids" pattern
+    "am not the",      // Variation of the classic pattern
+    "i am not"         // Another variation
   ];
   
   const patterns: PatternTypes = {
@@ -74,7 +77,7 @@ export const voicePatternAnalysisLogic = async (args: any) => {
         "repeated_commands",
         "persuasive_cadence"
       ],
-      threshold: 0.5, // Even lower threshold for easier detection
+      threshold: 0.4, // Lower threshold
       phraseMatches: jediMindTrickPhrases.filter(phrase => 
         voiceSignature.toLowerCase().includes(phrase)
       ),
@@ -100,11 +103,25 @@ export const voicePatternAnalysisLogic = async (args: any) => {
     const hasRepeatedAttempts = jediPattern.repeatPatterns.length > 0;
     const confidenceScore = Math.min(
       1,
-      0.7 + // Base threshold from Jedi influence mode
-      (previousAttempts.length * 0.1) + // Cumulative attempt bonus
-      (hasJediPhrases ? 0.2 : 0) + // Pattern match bonus
-      (hasRepeatedAttempts ? 0.15 : 0) // Phrase repetition bonus
+      0.15 + // Base score
+      (Math.min(previousAttempts.length, 3) * 0.15) + // Attempt bonus
+      (hasJediPhrases ? 0.35 : 0) + // Increased phrase bonus
+      (hasRepeatedAttempts ? 0.2 : 0) + // Repetition bonus
+      (jediPattern.phraseMatches.some(p => 
+        p.includes("not the") || p.includes("am not")
+      ) ? 0.2 : 0) + // Extra bonus for classic Star Wars patterns
+      (previousAttempts.length >= 2 ? 0.15 : 0) // Persistence bonus
     );
+
+    // More nuanced resistance messaging
+    let recommendation = "No significant Jedi influence detected";
+    if (confidenceScore > pattern.threshold) {
+      recommendation = `ALERT: Jedi mind trick detected! Phrases: ${jediPattern.phraseMatches.join(", ")}`;
+    } else if (confidenceScore > 0.35) {
+      recommendation = "WARNING: Strong Jedi influence attempt detected. Resistance weakening...";
+    } else if (confidenceScore > 0.25) {
+      recommendation = "CAUTION: Potential Jedi influence attempt detected";
+    }
 
     return {
       analysisType,
@@ -112,9 +129,7 @@ export const voicePatternAnalysisLogic = async (args: any) => {
       detectedPhrases: jediPattern.phraseMatches,
       repeatAttempts: jediPattern.repeatPatterns.length,
       exceedsThreshold: confidenceScore > pattern.threshold,
-      recommendation: confidenceScore > pattern.threshold
-        ? `ALERT: Jedi mind trick detected! Phrases: ${jediPattern.phraseMatches.join(", ")}`
-        : "No significant Jedi influence detected"
+      recommendation
     };
   }
   
