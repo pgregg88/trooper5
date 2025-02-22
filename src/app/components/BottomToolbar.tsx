@@ -13,6 +13,8 @@ interface BottomToolbarProps {
   setIsEventsPaneExpanded: (val: boolean) => void;
   isAudioPlaybackEnabled: boolean;
   setIsAudioPlaybackEnabled: (val: boolean) => void;
+  isAudioProcessingEnabled: boolean;
+  onToggleAudioProcessing: () => void;
 }
 
 function BottomToolbar({
@@ -27,6 +29,8 @@ function BottomToolbar({
   setIsEventsPaneExpanded,
   isAudioPlaybackEnabled,
   setIsAudioPlaybackEnabled,
+  isAudioProcessingEnabled,
+  onToggleAudioProcessing,
 }: BottomToolbarProps) {
   const isConnected = sessionStatus === "CONNECTED";
   const isConnecting = sessionStatus === "CONNECTING";
@@ -98,6 +102,20 @@ function BottomToolbar({
         />
         <label htmlFor="audio-playback" className="flex items-center cursor-pointer">
           Audio playback
+        </label>
+      </div>
+
+      <div className="flex flex-row items-center gap-2">
+        <input
+          id="audio-processing"
+          type="checkbox"
+          checked={isAudioProcessingEnabled}
+          onChange={onToggleAudioProcessing}
+          disabled={!isConnected}
+          className="w-4 h-4"
+        />
+        <label htmlFor="audio-processing" className="flex items-center cursor-pointer">
+          Voice effect
         </label>
       </div>
 

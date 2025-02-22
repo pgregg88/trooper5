@@ -1,9 +1,13 @@
 import { RefObject } from "react";
+import { SimpleAudioProcessor } from "./audioEffects";
+
+// Create a single processor instance
+const audioProcessor = new SimpleAudioProcessor();
 
 export async function createRealtimeConnection(
   EPHEMERAL_KEY: string,
   audioElement: RefObject<HTMLAudioElement | null>
-): Promise<{ pc: RTCPeerConnection; dc: RTCDataChannel }> {
+): Promise<{ pc: RTCPeerConnection; dc: RTCDataChannel; toggleAudioProcessing: () => Promise<boolean> }> {
   // Check if we're in a secure context
   if (!window.isSecureContext) {
     throw new Error(
@@ -20,16 +24,23 @@ export async function createRealtimeConnection(
 
   const pc = new RTCPeerConnection();
 
-  pc.ontrack = (e) => {
+  pc.ontrack = async (e) => {
     if (audioElement.current) {
-      audioElement.current.srcObject = e.streams[0];
+      try {
+        // Try to connect through audio processor
+        await audioProcessor.connectStream(e.streams[0], audioElement as RefObject<HTMLAudioElement>);
+      } catch (processingError) {
+        console.error('Failed to initialize audio processing:', processingError);
+        // Fallback to direct connection
+        audioElement.current.srcObject = e.streams[0];
+      }
     }
   };
 
   try {
     const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
     pc.addTrack(ms.getTracks()[0]);
-  } catch (error) {
+  } catch (micError) {
     throw new Error(
       "Unable to access your microphone. This could be because:\n1. You haven't granted microphone permissions\n2. You're not using a secure connection\n\nTry accessing via:\n- http://localhost:3000 (for local development)\n- https://[your-ip]:3443 (for network access)"
     );
@@ -60,5 +71,10 @@ export async function createRealtimeConnection(
 
   await pc.setRemoteDescription(answer);
 
-  return { pc, dc };
+  // Return connection objects and toggle function
+  return { 
+    pc, 
+    dc,
+    toggleAudioProcessing: () => audioProcessor.toggle()
+  };
 } 

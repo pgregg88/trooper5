@@ -50,6 +50,8 @@ function App() {
   const [isPTTUserSpeaking, setIsPTTUserSpeaking] = useState<boolean>(false);
   const [isAudioPlaybackEnabled, setIsAudioPlaybackEnabled] =
     useState<boolean>(true);
+  const [isAudioProcessingEnabled, setIsAudioProcessingEnabled] = useState<boolean>(true);
+  const [toggleAudioProcessingFn, setToggleAudioProcessingFn] = useState<(() => Promise<boolean>) | null>(null);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -158,12 +160,13 @@ function App() {
       }
       audioElementRef.current.autoplay = isAudioPlaybackEnabled;
 
-      const { pc, dc } = await createRealtimeConnection(
+      const { pc, dc, toggleAudioProcessing } = await createRealtimeConnection(
         EPHEMERAL_KEY,
         audioElementRef
       );
       pcRef.current = pc;
       dcRef.current = dc;
+      setToggleAudioProcessingFn(() => toggleAudioProcessing);
 
       dc.addEventListener("open", () => {
         logClientEvent({}, "data_channel.open");
@@ -361,6 +364,13 @@ function App() {
     setSelectedAgentName(newAgentName);
   };
 
+  const handleToggleAudioProcessing = async () => {
+    if (toggleAudioProcessingFn) {
+      const isEnabled = await toggleAudioProcessingFn();
+      setIsAudioProcessingEnabled(isEnabled);
+    }
+  };
+
   useEffect(() => {
     const storedPushToTalkUI = localStorage.getItem("pushToTalkUI");
     if (storedPushToTalkUI) {
@@ -375,6 +385,12 @@ function App() {
     );
     if (storedAudioPlaybackEnabled) {
       setIsAudioPlaybackEnabled(storedAudioPlaybackEnabled === "true");
+    }
+    const storedAudioProcessingEnabled = localStorage.getItem(
+      "audioProcessingEnabled"
+    );
+    if (storedAudioProcessingEnabled) {
+      setIsAudioProcessingEnabled(storedAudioProcessingEnabled === "true");
     }
   }, []);
 
@@ -392,6 +408,13 @@ function App() {
       isAudioPlaybackEnabled.toString()
     );
   }, [isAudioPlaybackEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "audioProcessingEnabled",
+      isAudioProcessingEnabled.toString()
+    );
+  }, [isAudioProcessingEnabled]);
 
   useEffect(() => {
     if (audioElementRef.current) {
@@ -519,6 +542,8 @@ function App() {
         setIsEventsPaneExpanded={setIsEventsPaneExpanded}
         isAudioPlaybackEnabled={isAudioPlaybackEnabled}
         setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
+        isAudioProcessingEnabled={isAudioProcessingEnabled}
+        onToggleAudioProcessing={handleToggleAudioProcessing}
       />
     </div>
   );

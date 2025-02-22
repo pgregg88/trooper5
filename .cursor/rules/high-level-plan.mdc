@@ -10,6 +10,6 @@ globs:
 3. Establish a defined game concept, backstory examples and associated game logic we’ll use to define requirements for our game rules and stormtrooper agent configurations.
 4. Always follow KISS principles, starting with simple game logic, rules and agent modes to get an MVP established quickly, then expand through careful, incremental iterations to expand functionality.
 5. Use the provided OpenAI agent examples to establish the new stormtrooper agent modes that are appropriate for our defined game concept and logic, remembering our KISS principles at all times. 
-6. Voice responses are returned from the OpenAI Realtime API using WebRTC. Each returned audio file be transformed by a local effects pipeline to modify the voice to sound like a real stormtrooper before being played on a local speaker.
+6. Voice responses are streamed in real-time from the OpenAI Realtime API directly to the client browser using WebRTC. The incoming audio stream is processed through the browser's Web Audio API pipeline to modify the voice to sound like a real stormtrooper before being played through the system's audio output.
 7. Over time we’ll add additional inputs like motion detection and face recognition to trigger interactions, etc.
 
