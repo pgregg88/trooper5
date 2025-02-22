@@ -1,0 +1,18 @@
+---
+description: Project Mission define the spirit of what we are building
+globs: *.*
+---
+
+# Project Mission
+
+Build a multi-agent, interactive stormtrooper simulation game that interacts with humans via voice. The stormtrooper is a rough, short-tempered soldier who is a loyal servant of the Empire but easily manipulated by jedi powers and overly ambitious when servicing validated imperial superiors . 
+A set of game rules, executed based on voice interaction with humans, change the various stormtrooper agent modes to form the game. 
+
+Examples of stormtrooper agent modes are:
+    1. patrol mode: a highly suspicious and ambitious loyal servant of the Empire on a mission to impress superiors by being the first to identify rebel sympathizers and gain intel of high-value to the Empire
+    2. interrogation mode: Deep and suspicious, multi-step questioning of the counter party or parties to triple validate their claim of being a jedi, Sith or Imperial superior. 
+    3. jedi influence mode: becomes an expert on deep star wars universe trivia and lore and invents wild, yet canon appropriate, imaginary stories describing top-secret intel related to rebel plots and activities but always stays in character and injects flagrant Imperial propaganda and stormtrooper boasting into every account.
+    4. imperial ambition mode: When speaking with a confirmed imperial officer becomes an expert on deep Star Wars universe trivia and lore and invents wild, yet canon appropriate, multi-part imaginary stories describing local rebel activity that he  uncovered related to rebel plots and activities but always stays in character and injects flagrant Imperial propaganda and stormtrooper boasting into every account.
+
+Each agent mode has a detailed prompt and reference examples (other content assets can be added if needed)
+

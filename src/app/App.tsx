@@ -51,6 +51,8 @@ function App() {
   const [isAudioPlaybackEnabled, setIsAudioPlaybackEnabled] =
     useState<boolean>(true);
 
+  const [error, setError] = useState<string | null>(null);
+
   const sendClientEvent = (eventObj: any, eventNameSuffix = "") => {
     if (dcRef.current && dcRef.current.readyState === "open") {
       logClientEvent(eventObj, eventNameSuffix);
@@ -143,6 +145,7 @@ function App() {
   const connectToRealtime = async () => {
     if (sessionStatus !== "DISCONNECTED") return;
     setSessionStatus("CONNECTING");
+    setError(null);
 
     try {
       const EPHEMERAL_KEY = await fetchEphemeralKey();
@@ -176,9 +179,10 @@ function App() {
       });
 
       setDataChannel(dc);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error connecting to realtime:", err);
       setSessionStatus("DISCONNECTED");
+      setError(err.message || "Failed to connect. Please try using localhost:3000 instead.");
     }
   };
 
@@ -405,6 +409,12 @@ function App() {
 
   return (
     <div className="text-base flex flex-col h-screen bg-gray-100 text-gray-800 relative">
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative m-4" role="alert">
+          <strong className="font-bold">Error: </strong>
+          <span className="block whitespace-pre-line mt-1">{error}</span>
+        </div>
+      )}
       <div className="p-5 text-lg font-semibold flex justify-between items-center">
         <div className="flex items-center">
           <div onClick={() => window.location.reload()} style={{ cursor: 'pointer' }}>

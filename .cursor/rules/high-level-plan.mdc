@@ -1,0 +1,15 @@
+---
+description: High-level Plan defines the componets for this project and their intended use
+globs: 
+---
+
+# High-level Plan
+
+1. Run locally on a rpi5 with high-speed SSD storage rather than sd-card
+2. Use the OpenAI: Realtime API Agent Demo as the base code for the project.
+3. Establish a defined game concept, backstory examples and associated game logic we’ll use to define requirements for our game rules and stormtrooper agent configurations.
+4. Always follow KISS principles, starting with simple game logic, rules and agent modes to get an MVP established quickly, then expand through careful, incremental iterations to expand functionality.
+5. Use the provided OpenAI agent examples to establish the new stormtrooper agent modes that are appropriate for our defined game concept and logic, remembering our KISS principles at all times. 
+6. Voice responses are returned from the OpenAI Realtime API using WebSockets. Each returned audio file be transformed by a local effects pipeline to modify the voice to sound like a real stormtrooper before being played on a local speaker.
+7. Over time we’ll add additional inputs like motion detection and face recognition to trigger interactions, etc.
+
