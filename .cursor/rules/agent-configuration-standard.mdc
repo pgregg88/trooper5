@@ -1,0 +1,163 @@
+---
+description: This document defines the required structure and standards for all agent configurations in the project.
+globs: *.*
+---
+# Agent Configuration Standard
+
+This document defines the required structure and standards for all agent configurations in the project.
+
+## Core Components
+
+### 1. Basic Configuration
+```typescript
+export const agentMode: AgentConfig = {
+  name: string;           // Unique identifier for the agent
+  publicDescription: string;  // Brief public-facing description
+  instructions: string;   // Detailed behavior instructions
+  tools: Tool[];         // Array of tool configurations
+  toolLogic: object;     // Tool implementation logic
+  downstreamAgents: AgentConfig[]; // Connected agent modes
+};
+```
+
+### 2. Required Personality Sections
+All agent configurations MUST include these personality sections in order:
+
+```markdown
+# Personality and Tone
+## Identity
+[Detailed description of who/what the agent represents]
+
+## Task
+[Clear statement of primary objectives]
+
+## Demeanor
+[Overall attitude and disposition]
+
+## Tone
+[Voice style and characteristics]
+
+## Level of Enthusiasm
+[Energy level and intensity guidelines]
+
+## Level of Formality
+[Communication style and protocol]
+
+## Level of Emotion
+[Emotional expression parameters]
+
+## Filler Words
+[Usage policy for verbal fillers]
+
+## Pacing
+[Speech rhythm and timing]
+
+## Other Details
+[Additional character-specific guidelines]
+```
+
+### 3. Tool Usage Instructions
+For each tool, define:
+- Trigger conditions
+- Required parameters
+- Response handling
+- Logging requirements
+- Error scenarios
+
+Example format:
+```markdown
+# Tool Usage Instructions
+1. [Tool Name]:
+   - When to use
+   - Required parameters
+   - Response handling
+   - Logging requirements
+   - Error handling
+```
+
+### 4. State Machine Definition
+Each state must include:
+
+```json
+{
+  "id": "unique_identifier",
+  "description": "Clear purpose statement",
+  "instructions": [
+    "Detailed behavior steps",
+    "Required tool calls",
+    "Logging requirements",
+    "Error handling"
+  ],
+  "examples": [
+    "Example responses",
+    "With clear formatting"
+  ],
+  "transitions": [{
+    "next_step": "target_state",
+    "condition": "Clear transition condition",
+    "mode_change": boolean,
+    "logging": [
+      "Required log entries",
+      "With specific formats"
+    ]
+  }]
+}
+```
+
+## Logging Standards
+
+### 1. Tool Call Logging
+- Log before and after each tool call
+- Include timestamps
+- Record confidence scores
+- Document any errors
+- Add breadcrumbs for significant events
+
+### 2. State Transitions
+- Add breadcrumb for each transition
+- Log transition cause
+- Record relevant metrics
+- Document mode changes
+
+### 3. Error Handling
+- Log all correction attempts
+- Track cumulative errors
+- Document recovery actions
+- Record security escalations
+
+## Implementation Guidelines
+
+### 1. Voice Interaction
+- Always spell critical information character-by-character
+- Confirm understanding explicitly
+- Log unclear responses
+- Track correction attempts
+
+### 2. Security Protocols
+- Define clear escalation triggers
+- Log security state changes
+- Track suspicious patterns
+- Document all verifications
+
+### 3. Mode Transitions
+- Clear transition conditions
+- Explicit logging requirements
+- State preservation rules
+- Recovery procedures
+
+## Testing Requirements
+
+### 1. Conversation Testing
+- Test all state transitions
+- Verify tool call logging
+- Check error handling
+- Validate security protocols
+
+### 2. Log Verification
+- Confirm breadcrumb creation
+- Check timestamp formats
+- Verify tool call records
+- Validate transition logs
+
+## Example Implementation
+See `src/app/agentConfigs/stormtrooper/modes/base.ts` for a reference implementation following these standards.

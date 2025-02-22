@@ -77,3 +77,104 @@ This fully specifies the agent set that was used in the interaction shown in the
 
 - Noah MacCallum - [noahmacca](https://x.com/noahmacca)
 - Ilan Bigio - [ibigio](https://github.com/ibigio)
+
+## Custom Implementation: Stormtrooper Voice Game
+
+This repository is a fork of the [Realtime API Agents Demo](https://github.com/replit/realtime-agents-demo) that implements a Star Wars-themed interactive voice game featuring stormtrooper agents.
+
+### Development Workflow
+
+This project follows a specific branching strategy to maintain synchronization with the upstream repository while developing custom features:
+
+- `main` branch: Syncs with upstream main branch
+- `develop` branch: Main development branch for custom features
+- Feature branches: Created from `develop` for specific implementations
+
+To sync with upstream changes:
+
+```bash
+git fetch upstream
+git checkout main
+git merge upstream/main
+git checkout develop
+git merge main
+```
+
+### Custom Components
+
+Custom stormtrooper-specific implementations are organized in the following structure:
+
+- `src/app/agentConfigs/stormtrooper/` - Stormtrooper agent configurations
+- `src/app/agentConfigs/stormtrooper/modes/` - Different stormtrooper behavior modes
+- `src/app/agentConfigs/stormtrooper/prompts/` - Custom prompts and personality definitions
+
+For more details about the stormtrooper game mechanics and rules, see the [Stormtrooper Game Documentation](docs/STORMTROOPER.md).
+
+### Fork Setup and Maintenance
+
+To set up this fork for development:
+
+1. Clone your fork:
+
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/trooper5.git
+   cd trooper5
+   ```
+
+2. Add upstream remote:
+
+   ```bash
+   git remote add upstream https://github.com/replit/realtime-agents-demo.git
+   ```
+
+3. Create development branch:
+
+   ```bash
+   git checkout -b develop
+   ```
+
+4. Install dependencies and set up environment:
+
+   ```bash
+   npm install
+   cp .env.example .env  # Then add your OPENAI_API_KEY
+   ```
+
+### Development Process
+
+1. Create feature branches from `develop` for new features:
+
+   ```bash
+   git checkout -b feature/new-stormtrooper-mode
+   ```
+
+2. Make changes following the structure in `Custom Components`
+
+3. Test changes:
+   - Run the development server: `npm run dev`
+   - Test in browser at <http://localhost:3000>
+   - Select "Stormtrooper" scenario from dropdown
+
+4. Commit changes with descriptive messages:
+
+   ```bash
+   git commit -m "feat: Add new stormtrooper patrol mode"
+   ```
+
+5. Merge upstream changes when needed:
+
+   ```bash
+   git fetch upstream
+   git checkout main
+   git merge upstream/main
+   git checkout develop
+   git merge main
+   ```
+
+6. Push changes to your fork:
+
+   ```bash
+   git push origin develop
+   ```
+
+For more details about implementing specific agent modes and behaviors, see the [Stormtrooper Game Documentation](docs/STORMTROOPER.md).

@@ -1,0 +1,33 @@
+---
+description: This document lists all available instruction rules for the project.
+globs: *.*
+---
+ # Available Instructions
+
+This document lists all available instruction rules for the project.
+
+## Core Rules
+- high-level-plan: High-level Plan defines the components for this project and their intended use
+- project-mission: Project Mission defines the spirit of what we are building
+- agent-configuration-standard: Defines required structure and standards for all agent configurations
+
+## Usage
+To use these rules in conversations with the AI, reference them by their key (the text before the colon).
+The AI will fetch and apply the relevant rule when needed.
+
+## Rule Descriptions
+
+### high-level-plan
+High-level architectural plan defining core components and their relationships.
+
+### project-mission
+Core mission statement and goals for the Stormtrooper Voice Game project.
+
+### agent-configuration-standard
+Comprehensive standard for creating and maintaining agent configurations, including:
+- Required personality sections
+- Tool usage guidelines
+- State machine structure
+- Logging requirements
+- Implementation standards
+- Testing requirements
