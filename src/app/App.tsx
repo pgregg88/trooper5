@@ -12,18 +12,18 @@ import Events from "./components/Events";
 import BottomToolbar from "./components/BottomToolbar";
 
 // Types
-import { AgentConfig, SessionStatus } from "@/app/types";
+import { AgentConfig, SessionStatus } from "./types";
 
 // Context providers & hooks
-import { useTranscript } from "@/app/contexts/TranscriptContext";
-import { useEvent } from "@/app/contexts/EventContext";
+import { useTranscript } from "./contexts/TranscriptContext";
+import { useEvent } from "./contexts/EventContext";
 import { useHandleServerEvent } from "./hooks/useHandleServerEvent";
 
 // Utilities
 import { createRealtimeConnection } from "./lib/realtimeConnection";
 
 // Agent configs
-import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
+import { allAgentSets, defaultAgentSetKey } from "./agentConfigs";
 
 function App() {
   const searchParams = useSearchParams();

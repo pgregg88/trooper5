@@ -2,7 +2,19 @@
 
 import React, { createContext, useContext, useState, FC, PropsWithChildren } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { TranscriptItem } from "@/app/types";
+
+export type TranscriptItem = {
+  itemId: string;
+  type: "MESSAGE" | "BREADCRUMB";
+  role?: "user" | "assistant";
+  title: string;
+  data?: Record<string, any>;
+  expanded: boolean;
+  timestamp: string;
+  createdAtMs: number;
+  status: "IN_PROGRESS" | "DONE";
+  isHidden: boolean;
+};
 
 type TranscriptContextValue = {
   transcriptItems: TranscriptItem[];
@@ -113,10 +125,10 @@ export const TranscriptProvider: FC<PropsWithChildren> = ({ children }) => {
   );
 };
 
-export function useTranscript() {
+export const useTranscript = () => {
   const context = useContext(TranscriptContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error("useTranscript must be used within a TranscriptProvider");
   }
   return context;
-}
+};

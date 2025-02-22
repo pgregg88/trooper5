@@ -1,9 +1,9 @@
 "use client";
 
-import { ServerEvent, SessionStatus, AgentConfig } from "@/app/types";
-import { useTranscript } from "@/app/contexts/TranscriptContext";
-import { useEvent } from "@/app/contexts/EventContext";
 import { useRef } from "react";
+import { ServerEvent, SessionStatus, AgentConfig } from "../types";
+import { useTranscript } from "../contexts/TranscriptContext";
+import { useEvent } from "../contexts/EventContext";
 
 export interface UseHandleServerEventParams {
   setSessionStatus: (status: SessionStatus) => void;

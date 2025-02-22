@@ -1,4 +1,4 @@
-import { AgentConfig } from "@/app/types";
+import { AgentConfig } from "../../types";
 
 const salesAgent: AgentConfig = {
     name: "salesAgent",
@@ -11,7 +11,7 @@ const salesAgent: AgentConfig = {
         type: "function",
         name: "lookupNewSales",
         description:
-          "Checks for current promotions, discounts, or special deals. Respond with available offers relevant to the user’s query.",
+          "Checks for current promotions, discounts, or special deals. Respond with available offers relevant to the user's query.",
         parameters: {
           type: "object",
           properties: {

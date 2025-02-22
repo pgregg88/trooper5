@@ -1,4 +1,4 @@
-import { AgentConfig } from "@/app/types";
+import { AgentConfig } from "../../types";
 
 const simulatedHuman: AgentConfig = {
   name: "simulatedHuman",

@@ -1,5 +1,5 @@
 import React from "react";
-import { SessionStatus } from "@/app/types";
+import { SessionStatus } from "../types";
 
 interface BottomToolbarProps {
   sessionStatus: SessionStatus;

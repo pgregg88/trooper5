@@ -1,4 +1,4 @@
-import { AgentConfig } from "@/app/types";
+import { AgentConfig } from "../types";
 import { injectTransferTools } from "./utils";
 
 // Define agents

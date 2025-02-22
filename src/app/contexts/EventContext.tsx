@@ -2,13 +2,13 @@
 
 import React, { createContext, useContext, useState, FC, PropsWithChildren } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { LoggedEvent } from "@/app/types";
+import { LoggedEvent } from "../types";
 
 type EventContextValue = {
   loggedEvents: LoggedEvent[];
   logClientEvent: (eventObj: Record<string, any>, eventNameSuffix?: string) => void;
   logServerEvent: (eventObj: Record<string, any>, eventNameSuffix?: string) => void;
-  toggleExpand: (id: number | string) => void;
+  toggleExpand: (id: string) => void;
 };
 
 const EventContext = createContext<EventContextValue | undefined>(undefined);
@@ -52,7 +52,6 @@ export const EventProvider: FC<PropsWithChildren> = ({ children }) => {
     );
   };
 
-
   return (
     <EventContext.Provider
       value={{ loggedEvents, logClientEvent, logServerEvent, toggleExpand }}
@@ -62,10 +61,10 @@ export const EventProvider: FC<PropsWithChildren> = ({ children }) => {
   );
 };
 
-export function useEvent() {
+export const useEvent = () => {
   const context = useContext(EventContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error("useEvent must be used within an EventProvider");
   }
   return context;
-}
+};
