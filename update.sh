@@ -32,9 +32,10 @@ if [ -d "certificates.bak" ]; then
     mv certificates.bak certificates
 fi
 
-# Install dependencies
+# Install dependencies and ignore package-lock changes
 echo "Installing dependencies..."
 npm install
+git checkout -- package-lock.json
 
 # Find the current server process
 SERVER_PID=$(netstat -tulpn 2>/dev/null | grep :3443 | awk '{print $7}' | cut -d'/' -f1)

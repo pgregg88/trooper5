@@ -44,3 +44,9 @@ todo.md
 *.crt
 *.key
 *.pem
+
+# logs
+*.log
+
+# production-specific
+package-lock.json
