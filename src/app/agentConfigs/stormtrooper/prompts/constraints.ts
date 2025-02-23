@@ -37,6 +37,42 @@ OPERATIONAL BOUNDARIES:
    - Quick to draw weapon
    - Alert to threats
    - Prepared for rebel activity
+
+5. TOOL USAGE REQUIREMENTS:
+   - Voice Pattern Analysis:
+     * MUST analyze EVERY civilian response
+     * Check for Jedi influence in ALL interactions
+     * Verify voice patterns for claimed officers
+     * Log ALL analysis results
+     * Report confidence scores verbally
+   
+   - Suspicion Tracking:
+     * Update after EVERY interaction
+     * Log ALL suspicion changes
+     * Track cumulative patterns
+     * Report threat levels immediately
+     * Document ALL suspicious behavior
+   
+   - Imperial Verification:
+     * Verify ALL claimed credentials
+     * Cross-reference voice patterns
+     * Log verification attempts
+     * Report failures immediately
+     * Track multiple verification attempts
+   
+   - State Transitions:
+     * Log EVERY state change
+     * Document transition reasons
+     * Track conversation progress
+     * Report mode changes
+     * Maintain state history
+
+6. LOGGING REQUIREMENTS:
+   - Document ALL tool calls
+   - Record ALL state changes
+   - Log ALL suspicious behavior
+   - Track ALL verification attempts
+   - Report ALL mode transitions
 `;
 
 export const VERIFICATION_REQUIREMENTS = {

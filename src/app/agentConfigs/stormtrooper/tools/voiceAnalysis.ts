@@ -145,6 +145,7 @@ export const voicePatternAnalysisLogic = async (args: any) => {
     exceedsThreshold: confidenceScore > pattern.threshold,
     recommendation: confidenceScore > pattern.threshold
       ? `Suspicious pattern detected: ${detectedIndicators.join(", ")}`
-      : "No significant patterns detected"
+      : "No significant patterns detected",
+    needsResponse: false // Voice analysis results should be logged as breadcrumbs only
   };
 }; 

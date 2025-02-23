@@ -50,10 +50,72 @@ export function useHandleServerEvent({
     if (currentAgent?.toolLogic?.[functionCallParams.name]) {
       const fn = currentAgent.toolLogic[functionCallParams.name];
       const fnResult = await fn(args, transcriptItems);
-      addTranscriptBreadcrumb(
-        `function call result: ${functionCallParams.name}`,
-        fnResult
-      );
+      
+      if (functionCallParams.name === 'analyzeVoicePattern') {
+        addTranscriptBreadcrumb(
+          `Voice Analysis Results`,
+          {
+            type: args.analysisType,
+            confidence: fnResult.confidenceScore,
+            detectedPatterns: fnResult.detectedPhrases || fnResult.detectedIndicators,
+            recommendation: fnResult.recommendation,
+            exceedsThreshold: fnResult.exceedsThreshold
+          }
+        );
+
+        // Chain to next appropriate function based on analysis type
+        if (args.analysisType === 'imperial_verification' && !fnResult.exceedsThreshold) {
+          handleFunctionCall({
+            name: "verifyImperialCredentials",
+            arguments: JSON.stringify({
+              claimedRank: "Captain",
+              clearanceCode: args.voiceSignature.match(/Code\s+([A-Z0-9-]+)/i)?.[1] || "",
+              voiceSignature: args.voiceSignature
+            })
+          });
+          return; // Let the chain continue
+        }
+      } else if (functionCallParams.name === 'verifyImperialCredentials') {
+        addTranscriptBreadcrumb(
+          `Imperial Verification Results`,
+          {
+            verified: fnResult.verified,
+            level: fnResult.authorityLevel,
+            reason: fnResult.reason
+          }
+        );
+        
+        // After verification completes, always trigger a response
+        sendClientEvent({ type: "response.create" });
+        return;
+      } else if (functionCallParams.name === 'logCurrentState') {
+        addTranscriptBreadcrumb(
+          `State Transition`,
+          {
+            state: fnResult.state,
+            description: fnResult.data?.description,
+            reason: fnResult.data?.instructions?.[0],
+            timestamp: new Date().toISOString()
+          }
+        );
+
+        // After state transition, trigger appropriate next steps
+        if (fnResult.state === '3_imperial_check') {
+          handleFunctionCall({
+            name: "analyzeVoicePattern",
+            arguments: JSON.stringify({
+              voiceSignature: transcriptItems[transcriptItems.length - 1]?.data?.text || "",
+              analysisType: "imperial_verification"
+            })
+          });
+          return;
+        }
+      } else {
+        addTranscriptBreadcrumb(
+          `${functionCallParams.name} Results`,
+          fnResult
+        );
+      }
 
       sendClientEvent({
         type: "conversation.item.create",
@@ -63,13 +125,26 @@ export function useHandleServerEvent({
           output: JSON.stringify(fnResult),
         },
       });
-      sendClientEvent({ type: "response.create" });
+      
+      // Only trigger response if this is the end of a chain
+      if (fnResult?.needsResponse !== false) {
+        sendClientEvent({ type: "response.create" });
+      }
     } else if (functionCallParams.name === "transferAgents") {
       const destinationAgent = args.destination_agent;
       const newAgentConfig =
         selectedAgentConfigSet?.find((a) => a.name === destinationAgent) || null;
       if (newAgentConfig) {
         setSelectedAgentName(destinationAgent);
+        addTranscriptBreadcrumb(
+          `Mode Change`,
+          {
+            from: selectedAgentName,
+            to: destinationAgent,
+            reason: args.reason || "Mode transition triggered",
+            timestamp: new Date().toISOString()
+          }
+        );
       }
       const functionCallOutput = {
         destination_agent: destinationAgent,
@@ -140,6 +215,7 @@ export function useHandleServerEvent({
           "";
         const role = serverEvent.item?.role as "user" | "assistant";
         const itemId = serverEvent.item?.id;
+        const messageAgent = serverEvent.item?.name;
 
         if (itemId && transcriptItems.some((item) => item.itemId === itemId)) {
           break;
@@ -149,6 +225,22 @@ export function useHandleServerEvent({
           if (role === "user" && !text) {
             text = "[Transcribing...]";
           }
+          
+          if (role === "assistant") {
+            if (messageAgent && messageAgent !== selectedAgentName) {
+              addTranscriptBreadcrumb(
+                "Message Filtered",
+                {
+                  reason: "Message from different agent context",
+                  from_agent: messageAgent,
+                  current_agent: selectedAgentName,
+                  filtered_text: text
+                }
+              );
+              break;
+            }
+          }
+          
           addTranscriptMessage(itemId, role, text);
         }
         break;
@@ -160,8 +252,32 @@ export function useHandleServerEvent({
           !serverEvent.transcript || serverEvent.transcript === "\n"
             ? "[inaudible]"
             : serverEvent.transcript;
+        
+        // Track suspicion for unclear or evasive responses
+        if (finalTranscript === "[inaudible]") {
+          handleFunctionCall({
+            name: "trackSuspicionLevel",
+            arguments: JSON.stringify({
+              interactionType: "hesitation",
+              intensity: "0.6"
+            })
+          });
+        } else if (finalTranscript.toLowerCase().includes("uh") || 
+                   finalTranscript.toLowerCase().includes("um") ||
+                   finalTranscript.split(" ").length < 3) {
+          handleFunctionCall({
+            name: "trackSuspicionLevel",
+            arguments: JSON.stringify({
+              interactionType: "hesitation",
+              intensity: "0.4"
+            })
+          });
+        }
+        
         if (itemId) {
           updateTranscriptMessage(itemId, finalTranscript, false);
+          // Only trigger a new response when we get actual user input
+          sendClientEvent({ type: "response.create" });
         }
         break;
       }
@@ -177,19 +293,105 @@ export function useHandleServerEvent({
 
       case "response.done": {
         if (serverEvent.response?.output) {
-          serverEvent.response.output.forEach((outputItem) => {
-            if (
-              outputItem.type === "function_call" &&
-              outputItem.name &&
+          addTranscriptBreadcrumb(
+            "Response Processing",
+            {
+              timestamp: new Date().toISOString(),
+              agent: selectedAgentName,
+              hasOutput: !!serverEvent.response.output.length
+            }
+          );
+
+          // Process explicit function calls from the response first
+          const functionCalls = serverEvent.response.output
+            .filter(outputItem => 
+              outputItem.type === "function_call" && 
+              outputItem.name && 
               outputItem.arguments
-            ) {
+            );
+
+          if (functionCalls.length > 0) {
+            // Only process the first function call, let the chain handle the rest
+            const firstCall = functionCalls[0];
+            if (firstCall.name) {
+              addTranscriptBreadcrumb(
+                "Function Call Detected",
+                {
+                  name: firstCall.name,
+                  timestamp: new Date().toISOString()
+                }
+              );
+              
               handleFunctionCall({
-                name: outputItem.name,
-                call_id: outputItem.call_id,
-                arguments: outputItem.arguments,
+                name: firstCall.name,
+                call_id: firstCall.call_id,
+                arguments: firstCall.arguments || "{}"
               });
             }
-          });
+            break; // Exit early to let the chain complete
+          }
+
+          // Only check for automatic state transitions if no explicit function calls
+          const responseText = serverEvent.item?.content?.[0]?.text || "";
+          const currentState = transcriptItems
+            .filter(item => item.type === "BREADCRUMB" && item.title === "State Transition")
+            .pop()?.data?.state || "1_initial_contact";
+
+          // Handle state-based function calls sequentially
+          const hasImperialClaim = responseText.toLowerCase().includes("captain") || 
+                                 responseText.toLowerCase().includes("imperial") ||
+                                 responseText.toLowerCase().includes("code");
+                                 
+          if (hasImperialClaim && currentState !== "3_imperial_check") {
+            // Start with state transition
+            handleFunctionCall({
+              name: "logCurrentState",
+              arguments: JSON.stringify({
+                state_id: "3_imperial_check",
+                state_data: {
+                  description: "Imperial credentials claimed - initiating verification",
+                  instructions: ["Verify rank and clearance code", "Check voice patterns"]
+                }
+              })
+            });
+            break; // Let the chain continue with voice analysis and verification
+          } else if (responseText.toLowerCase().includes("suspicious") && currentState !== "7_high_suspicion") {
+            handleFunctionCall({
+              name: "logCurrentState",
+              arguments: JSON.stringify({
+                state_id: "7_high_suspicion",
+                state_data: {
+                  description: "Transition to high suspicion due to suspicious behavior",
+                  reason: "Suspicious behavior detected in response"
+                }
+              })
+            });
+            break;
+          } else if (responseText.toLowerCase().includes("move along") && currentState !== "8_civilian_dismissal") {
+            handleFunctionCall({
+              name: "logCurrentState",
+              arguments: JSON.stringify({
+                state_id: "8_civilian_dismissal",
+                state_data: {
+                  description: "Transition to civilian dismissal",
+                  reason: "Issuing move along command"
+                }
+              })
+            });
+            break;
+          }
+
+          // Do NOT automatically trigger new responses
+          // Let the agent or user interaction drive the conversation
+        } else {
+          addTranscriptBreadcrumb(
+            "Response Without Output",
+            {
+              timestamp: new Date().toISOString(),
+              agent: selectedAgentName
+            }
+          );
+          // Do NOT automatically trigger new responses here either
         }
         break;
       }
