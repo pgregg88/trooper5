@@ -56,7 +56,7 @@ A secure communications terminal that processes voice through an authentic storm
 
    # Windows
    # Download and run nvm-windows installer from:
-   # https://github.com/coreybutler/nvm-windows/releases
+   # <https://github.com/coreybutler/nvm-windows/releases>
    ```
 
 2. Restart your terminal, then verify nvm installation
@@ -104,6 +104,7 @@ A secure communications terminal that processes voice through an authentic storm
    ```
 
    Required variables in `.env`:
+
    ```bash
    OPENAI_API_KEY=your_api_key_here
    # Optional: Configure custom HTTPS port (default: 3443)
@@ -130,19 +131,22 @@ A secure communications terminal that processes voice through an authentic storm
    ```
 
    Place the certificates in the `certificates` directory:
-   ```
+
+   ```text
    certificates/
    ├── private.key
    └── certificate.crt
    ```
 
 4. Add HTTPS script to package.json
+
    ```bash
    # Open package.json
    nano package.json  # or your preferred editor
    ```
 
    Add the following to the "scripts" section:
+
    ```json
    {
      "scripts": {
@@ -155,82 +159,90 @@ A secure communications terminal that processes voice through an authentic storm
    ```
 
 5. Create HTTPS server configuration
+
    ```bash
    # Create server.js in project root
    cat > server.js << 'EOL'
-const https = require('https');
-const fs = require('fs');
-const { parse } = require('url');
-const next = require('next');
-const os = require('os');
-const dns = require('dns');
+   ```
 
-const dev = process.env.NODE_ENV !== 'production';
-const app = next({ dev });
-const handle = app.getRequestHandler();
+   ```javascript
+   const https = require('https');
+   const fs = require('fs');
+   const { parse } = require('url');
+   const next = require('next');
+   const os = require('os');
+   const dns = require('dns');
 
-const httpsOptions = {
-  key: fs.readFileSync('./certificates/private.key'),
-  cert: fs.readFileSync('./certificates/certificate.crt')
-};
+   const dev = process.env.NODE_ENV !== 'production';
+   const app = next({ dev });
+   const handle = app.getRequestHandler();
 
-const port = process.env.HTTPS_PORT || 3443;
+   const httpsOptions = {
+     key: fs.readFileSync('./certificates/private.key'),
+     cert: fs.readFileSync('./certificates/certificate.crt')
+   };
 
-// Get network interfaces
-function getNetworkInfo() {
-  const interfaces = os.networkInterfaces();
-  const addresses = [];
-  
-  for (const iface of Object.values(interfaces)) {
-    for (const addr of iface) {
-      // Skip internal and IPv6 addresses
-      if (!addr.internal && addr.family === 'IPv4') {
-        addresses.push(addr.address);
-      }
-    }
-  }
-  return addresses;
-}
+   const port = process.env.HTTPS_PORT || 3443;
 
-// Format hostname for local network
-function getFormattedHostname() {
-  const hostname = os.hostname();
-  // Add .local if it's not already there
-  return hostname.endsWith('.local') ? hostname : `${hostname}.local`;
-}
+   // Get network interfaces
+   function getNetworkInfo() {
+     const interfaces = os.networkInterfaces();
+     const addresses = [];
+     
+     for (const iface of Object.values(interfaces)) {
+       for (const addr of iface) {
+         // Skip internal and IPv6 addresses
+         if (!addr.internal && addr.family === 'IPv4') {
+           addresses.push(addr.address);
+         }
+       }
+     }
+     return addresses;
+   }
 
-app.prepare().then(() => {
-  // Get hostname
-  const formattedHostname = getFormattedHostname();
-  const addresses = getNetworkInfo();
-  
-  console.log('\nAvailable on:');
-  console.log(`  • Hostname: https://${formattedHostname}:${port}`);
-  addresses.forEach(addr => {
-    console.log(`  • IP Address: https://${addr}:${port}`);
-  });
-  console.log('\nNote: You may need to accept the self-signed certificate warning.');
+   // Format hostname for local network
+   function getFormattedHostname() {
+     const hostname = os.hostname();
+     // Add .local if it's not already there
+     return hostname.endsWith('.local') ? hostname : `${hostname}.local`;
+   }
 
-  https.createServer(httpsOptions, (req, res) => {
-    const parsedUrl = parse(req.url, true);
-    handle(req, res, parsedUrl);
-  }).listen(port, '0.0.0.0', (err) => {
-    if (err) throw err;
-    console.log(`\n> Server started on port ${port}`);
-  });
-});
-EOL
+   app.prepare().then(() => {
+     // Get hostname
+     const formattedHostname = getFormattedHostname();
+     const addresses = getNetworkInfo();
+     
+     console.log('\nAvailable on:');
+     console.log(`  • Hostname: https://${formattedHostname}:${port}`);
+     addresses.forEach(addr => {
+       console.log(`  • IP Address: https://${addr}:${port}`);
+     });
+     console.log('\nNote: You may need to accept the self-signed certificate warning.');
 
+     https.createServer(httpsOptions, (req, res) => {
+       const parsedUrl = parse(req.url, true);
+       handle(req, res, parsedUrl);
+     }).listen(port, '0.0.0.0', (err) => {
+       if (err) throw err;
+       console.log(`\n> Server started on port ${port}`);
+     });
+   });
+   EOL
+   ```
+
+   ```bash
    # Verify server.js was created
    ls -l server.js
    ```
 
    The file should be created in your project root directory. You can verify its contents with:
+
    ```bash
    cat server.js
    ```
 
    When you run the server, it will show all available network addresses:
+
    ```bash
    > Server started on port 3443
 
@@ -247,9 +259,6 @@ EOL
    ```bash
    # Confirm you're in the project directory
    pwd  # Should show /path/to/[repository-name]
-   
-   # Verify package.json exists
-   ls package.json  # Should show package.json
    ```
 
 7. Clean up old packages (if updating/reinstalling)
@@ -303,8 +312,9 @@ EOL
    ```
 
 2. Access the terminal
-   - Local development: http://localhost:3000
-   - Network access: https://[your-ip]:3443
+
+   - Local development: <http://localhost:3000>
+   - Network access: <https://[your-ip]:3443>
 
    Note: When accessing via HTTPS, you'll need to:
    1. Accept the self-signed certificate warning in your browser
@@ -325,10 +335,11 @@ EOL
 
 This terminal requires a secure connection. Always access via:
 
-- http://localhost:3000 (local development)
-- https://[your-ip]:3443 (network access)
+- <http://localhost:3000> (local development)
+- <https://[your-ip]:3443> (network access)
 
 For network access, ensure:
+
 1. Your firewall allows incoming connections on port 3443
 2. The self-signed certificate is properly configured
 3. You're using HTTPS when accessing from other devices
@@ -336,6 +347,7 @@ For network access, ensure:
 ## Troubleshooting
 
 1. **Node.js Installation Issues**
+
    - If `nvm` command is not found after installation, try:
 
      ```bash
@@ -361,17 +373,21 @@ For network access, ensure:
      ```
 
 2. **No audio processing**
+
    - Ensure microphone permissions are granted
    - Check that you're using a secure connection
    - Verify audio playback is enabled
 
 3. **Connection issues**
+
    - Confirm you're using the correct URL
    - Check network connectivity
    - Verify the server is running
 
 4. **HTTPS/Certificate Issues**
+
    - If you see certificate warnings:
+
      ```bash
      # Verify certificate files exist
      ls certificates/private.key certificates/certificate.crt
@@ -383,7 +399,9 @@ For network access, ensure:
      chmod 600 certificates/private.key
      chmod 644 certificates/certificate.crt
      ```
+
    - If port 3443 is in use:
+
      ```bash
      # Check what's using the port
      lsof -i :3443    # macOS/Linux
@@ -404,7 +422,8 @@ IMPERIAL RESTRICTED - Level 3 Clearance Required
 ## Repository Structure
 
 This repository uses the following branching strategy:
-```
+
+```text
 main ................ Primary development branch with stormtrooper voice implementation
 upstream-main ....... Tracks the original source repository for updates
 feature/* .......... Feature branches for new development
@@ -413,6 +432,7 @@ feature/* .......... Feature branches for new development
 ### Managing Upstream Updates
 
 1. First-time setup (if you haven't already):
+
    ```bash
    # Add the upstream repository
    git remote add upstream https://github.com/replit/realtime-agents-demo.git
@@ -423,6 +443,7 @@ feature/* .......... Feature branches for new development
    ```
 
 2. To get updates from the source repository:
+
    ```bash
    # Fetch upstream changes
    git fetch upstream
@@ -439,6 +460,7 @@ feature/* .......... Feature branches for new development
    ```
 
 3. For new features:
+
    ```bash
    # Create a feature branch
    git checkout -b feature/new-feature

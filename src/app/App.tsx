@@ -3,7 +3,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
-
 import Image from "next/image";
 
 // UI components
@@ -33,27 +32,21 @@ function App() {
   const { logClientEvent, logServerEvent } = useEvent();
 
   const [selectedAgentName, setSelectedAgentName] = useState<string>("");
-  const [selectedAgentConfigSet, setSelectedAgentConfigSet] =
-    useState<AgentConfig[] | null>(null);
+  const [selectedAgentConfigSet, setSelectedAgentConfigSet] = useState<AgentConfig[] | null>(null);
+  const [sessionStatus, setSessionStatus] = useState<SessionStatus>("DISCONNECTED");
+  const [isEventsPaneExpanded, setIsEventsPaneExpanded] = useState<boolean>(true);
+  const [userText, setUserText] = useState<string>("");
+  const [isPTTActive, setIsPTTActive] = useState<boolean>(false);
+  const [isPTTUserSpeaking, setIsPTTUserSpeaking] = useState<boolean>(false);
+  const [isAudioPlaybackEnabled, setIsAudioPlaybackEnabled] = useState<boolean>(true);
+  const [isAudioProcessingEnabled, setIsAudioProcessingEnabled] = useState<boolean>(true);
+  const [vadThreshold, setVadThreshold] = useState<number>(0.5);
+  const [toggleAudioProcessingFn, setToggleAudioProcessingFn] = useState<(() => Promise<boolean>) | null>(null);
 
   const [dataChannel, setDataChannel] = useState<RTCDataChannel | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
-  const [sessionStatus, setSessionStatus] =
-    useState<SessionStatus>("DISCONNECTED");
-
-  const [isEventsPaneExpanded, setIsEventsPaneExpanded] =
-    useState<boolean>(true);
-  const [userText, setUserText] = useState<string>("");
-  const [isPTTActive, setIsPTTActive] = useState<boolean>(false);
-  const [isPTTUserSpeaking, setIsPTTUserSpeaking] = useState<boolean>(false);
-  const [isAudioPlaybackEnabled, setIsAudioPlaybackEnabled] =
-    useState<boolean>(true);
-  const [isAudioProcessingEnabled, setIsAudioProcessingEnabled] = useState<boolean>(true);
-  const [toggleAudioProcessingFn, setToggleAudioProcessingFn] = useState<(() => Promise<boolean>) | null>(null);
-
-  const [error, setError] = useState<string | null>(null);
 
   const sendClientEvent = (eventObj: any, eventNameSuffix = "") => {
     if (dcRef.current && dcRef.current.readyState === "open") {
@@ -147,7 +140,6 @@ function App() {
   const connectToRealtime = async () => {
     if (sessionStatus !== "DISCONNECTED") return;
     setSessionStatus("CONNECTING");
-    setError(null);
 
     try {
       const EPHEMERAL_KEY = await fetchEphemeralKey();
@@ -185,7 +177,6 @@ function App() {
     } catch (err: any) {
       console.error("Error connecting to realtime:", err);
       setSessionStatus("DISCONNECTED");
-      setError(err.message || "Failed to connect. Please try using localhost:3000 instead.");
     }
   };
 
@@ -205,6 +196,26 @@ function App() {
     setIsPTTUserSpeaking(false);
 
     logClientEvent({}, "disconnected");
+  };
+
+  const handleSendTextMessage = () => {
+    if (!userText.trim()) return;
+    cancelAssistantSpeech();
+
+    sendClientEvent(
+      {
+        type: "conversation.item.create",
+        item: {
+          type: "message",
+          role: "user",
+          content: [{ type: "input_text", text: userText.trim() }],
+        },
+      },
+      "(send user text message)"
+    );
+    setUserText("");
+
+    sendClientEvent({ type: "response.create" }, "trigger response");
   };
 
   const sendSimulatedUserMessage = (text: string) => {
@@ -243,7 +254,7 @@ function App() {
       ? null
       : {
           type: "server_vad",
-          threshold: 0.5,
+          threshold: vadThreshold,
           prefix_padding_ms: 300,
           silence_duration_ms: 200,
           create_response: true,
@@ -299,26 +310,6 @@ function App() {
     );
   };
 
-  const handleSendTextMessage = () => {
-    if (!userText.trim()) return;
-    cancelAssistantSpeech();
-
-    sendClientEvent(
-      {
-        type: "conversation.item.create",
-        item: {
-          type: "message",
-          role: "user",
-          content: [{ type: "input_text", text: userText.trim() }],
-        },
-      },
-      "(send user text message)"
-    );
-    setUserText("");
-
-    sendClientEvent({ type: "response.create" }, "trigger response");
-  };
-
   const handleTalkButtonDown = () => {
     if (sessionStatus !== "CONNECTED" || dataChannel?.readyState !== "open")
       return;
@@ -341,6 +332,18 @@ function App() {
     sendClientEvent({ type: "response.create" }, "trigger response PTT");
   };
 
+  const handleAgentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newAgentConfig = e.target.value;
+    const url = new URL(window.location.toString());
+    url.searchParams.set("agentConfig", newAgentConfig);
+    window.location.replace(url.toString());
+  };
+
+  const handleSelectedAgentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newAgentName = e.target.value;
+    setSelectedAgentName(newAgentName);
+  };
+
   const onToggleConnection = () => {
     if (sessionStatus === "CONNECTED" || sessionStatus === "CONNECTING") {
       disconnectFromRealtime();
@@ -350,21 +353,7 @@ function App() {
     }
   };
 
-  const handleAgentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newAgentConfig = e.target.value;
-    const url = new URL(window.location.toString());
-    url.searchParams.set("agentConfig", newAgentConfig);
-    window.location.replace(url.toString());
-  };
-
-  const handleSelectedAgentChange = (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    const newAgentName = e.target.value;
-    setSelectedAgentName(newAgentName);
-  };
-
-  const handleToggleAudioProcessing = async () => {
+  const onToggleAudioProcessing = async () => {
     if (toggleAudioProcessingFn) {
       const isEnabled = await toggleAudioProcessingFn();
       setIsAudioProcessingEnabled(isEnabled);
@@ -375,6 +364,10 @@ function App() {
     const storedPushToTalkUI = localStorage.getItem("pushToTalkUI");
     if (storedPushToTalkUI) {
       setIsPTTActive(storedPushToTalkUI === "true");
+    }
+    const storedVadThreshold = localStorage.getItem("vadThreshold");
+    if (storedVadThreshold) {
+      setVadThreshold(parseFloat(storedVadThreshold));
     }
     const storedLogsExpanded = localStorage.getItem("logsExpanded");
     if (storedLogsExpanded) {
@@ -417,6 +410,13 @@ function App() {
   }, [isAudioProcessingEnabled]);
 
   useEffect(() => {
+    localStorage.setItem("vadThreshold", vadThreshold.toString());
+    if (sessionStatus === "CONNECTED" && !isPTTActive) {
+      updateSession();
+    }
+  }, [vadThreshold]);
+
+  useEffect(() => {
     if (audioElementRef.current) {
       if (isAudioPlaybackEnabled) {
         audioElementRef.current.play().catch((err) => {
@@ -428,123 +428,96 @@ function App() {
     }
   }, [isAudioPlaybackEnabled]);
 
-  const agentSetKey = searchParams.get("agentConfig") || "default";
-
   return (
-    <div className="text-base flex flex-col h-screen bg-gray-100 text-gray-800 relative">
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative m-4" role="alert">
-          <strong className="font-bold">Error: </strong>
-          <span className="block whitespace-pre-line mt-1">{error}</span>
+    <div className="flex flex-col h-screen bg-gray-100 dark:bg-imperial-black relative sw-scanline">
+      <div className="sw-grid absolute inset-0 opacity-10 pointer-events-none"></div>
+      <header className="flex items-center justify-between px-6 py-4 bg-white dark:bg-imperial-black border-b border-gray-200 dark:border-imperial-gray relative z-10">
+        <div className="flex items-center gap-x-4">
+          <Image
+            src="/Imperial_Emblem.svg"
+            alt="Imperial Emblem"
+            width={32}
+            height={32}
+            className="invert"
+          />
+          <h1 className="text-xl font-bold text-gray-900 dark:text-imperial-white sw-terminal uppercase tracking-wider">
+            Imperial Intelligence Terminal
+          </h1>
         </div>
-      )}
-      <div className="p-5 text-lg font-semibold flex justify-between items-center">
-        <div className="flex items-center">
-          <div onClick={() => window.location.reload()} style={{ cursor: 'pointer' }}>
-            <Image
-              src="/openai-logomark.svg"
-              alt="OpenAI Logo"
-              width={20}
-              height={20}
-              className="mr-2"
-            />
-          </div>
-          <div>
-            Realtime API <span className="text-gray-500">Agents</span>
-          </div>
+        <div className="flex items-center gap-x-4">
+          <select
+            value={searchParams.get("agentConfig") || defaultAgentSetKey}
+            onChange={handleAgentChange}
+            className="px-4 py-2 rounded-sm border border-gray-200 dark:border-imperial-gray bg-white dark:bg-imperial-black text-gray-900 dark:text-imperial-white sw-terminal uppercase tracking-wider focus:outline-none focus:ring-1 focus:ring-imperial-red"
+          >
+            {Object.keys(allAgentSets).map((agentKey) => (
+              <option key={agentKey} value={agentKey}>
+                {agentKey}
+              </option>
+            ))}
+          </select>
+          <select
+            value={selectedAgentName}
+            onChange={handleSelectedAgentChange}
+            className="px-4 py-2 rounded-sm border border-gray-200 dark:border-imperial-gray bg-white dark:bg-imperial-black text-gray-900 dark:text-imperial-white sw-terminal uppercase tracking-wider focus:outline-none focus:ring-1 focus:ring-imperial-red"
+          >
+            {selectedAgentConfigSet?.map(agent => (
+              <option key={agent.name} value={agent.name}>
+                {agent.name}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={onToggleConnection}
+            className="p-2 rounded-sm bg-gray-200 dark:bg-imperial-gray hover:bg-gray-300 dark:hover:opacity-80 sw-terminal uppercase tracking-wider"
+          >
+            {sessionStatus === "CONNECTED" ? "Disconnect" : "Connect"}
+          </button>
+          <button
+            onClick={() => setIsEventsPaneExpanded(!isEventsPaneExpanded)}
+            className="p-2 rounded-sm bg-gray-200 dark:bg-imperial-gray hover:bg-gray-300 dark:hover:opacity-80 sw-terminal uppercase tracking-wider"
+          >
+            {isEventsPaneExpanded ? "Hide Logs" : "Show Logs"}
+          </button>
         </div>
-        <div className="flex items-center">
-          <label className="flex items-center text-base gap-1 mr-2 font-medium">
-            Scenario
-          </label>
-          <div className="relative inline-block">
-            <select
-              value={agentSetKey}
-              onChange={handleAgentChange}
-              className="appearance-none border border-gray-300 rounded-lg text-base px-2 py-1 pr-8 cursor-pointer font-normal focus:outline-none"
-            >
-              {Object.keys(allAgentSets).map((agentKey) => (
-                <option key={agentKey} value={agentKey}>
-                  {agentKey}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-gray-600">
-              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  d="M5.23 7.21a.75.75 0 011.06.02L10 10.44l3.71-3.21a.75.75 0 111.04 1.08l-4.25 3.65a.75.75 0 01-1.04 0L5.21 8.27a.75.75 0 01.02-1.06z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-          </div>
+      </header>
 
-          {agentSetKey && (
-            <div className="flex items-center ml-6">
-              <label className="flex items-center text-base gap-1 mr-2 font-medium">
-                Agent
-              </label>
-              <div className="relative inline-block">
-                <select
-                  value={selectedAgentName}
-                  onChange={handleSelectedAgentChange}
-                  className="appearance-none border border-gray-300 rounded-lg text-base px-2 py-1 pr-8 cursor-pointer font-normal focus:outline-none"
-                >
-                  {selectedAgentConfigSet?.map(agent => (
-                    <option key={agent.name} value={agent.name}>
-                      {agent.name}
-                    </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-gray-600">
-                  <svg
-                    className="h-4 w-4"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M5.23 7.21a.75.75 0 011.06.02L10 10.44l3.71-3.21a.75.75 0 111.04 1.08l-4.25 3.65a.75.75 0 01-1.04 0L5.21 8.27a.75.75 0 01.02-1.06z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          )}
+      <main className="flex-1 flex overflow-hidden p-6 gap-x-6 relative z-10">
+        <div className={`flex-1 flex ${isEventsPaneExpanded ? 'w-1/2' : 'w-full'} transition-all duration-200`}>
+          <Transcript
+            userText={userText}
+            setUserText={setUserText}
+            onSendMessage={handleSendTextMessage}
+            canSend={
+              sessionStatus === "CONNECTED" &&
+              dcRef.current?.readyState === "open"
+            }
+          />
         </div>
-      </div>
-
-      <div className="flex flex-1 gap-2 px-2 overflow-hidden relative">
-        <Transcript
-          userText={userText}
-          setUserText={setUserText}
-          onSendMessage={handleSendTextMessage}
-          canSend={
-            sessionStatus === "CONNECTED" &&
-            dcRef.current?.readyState === "open"
-          }
+        <Events
+          isExpanded={isEventsPaneExpanded}
         />
+      </main>
 
-        <Events isExpanded={isEventsPaneExpanded} />
+      <div className="relative z-10">
+        <BottomToolbar
+          sessionStatus={sessionStatus}
+          onToggleConnection={onToggleConnection}
+          isPTTActive={isPTTActive}
+          setIsPTTActive={setIsPTTActive}
+          isPTTUserSpeaking={isPTTUserSpeaking}
+          handleTalkButtonDown={handleTalkButtonDown}
+          handleTalkButtonUp={handleTalkButtonUp}
+          isEventsPaneExpanded={isEventsPaneExpanded}
+          setIsEventsPaneExpanded={setIsEventsPaneExpanded}
+          isAudioPlaybackEnabled={isAudioPlaybackEnabled}
+          setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
+          isAudioProcessingEnabled={isAudioProcessingEnabled}
+          onToggleAudioProcessing={onToggleAudioProcessing}
+          vadThreshold={vadThreshold}
+          setVadThreshold={setVadThreshold}
+        />
       </div>
-
-      <BottomToolbar
-        sessionStatus={sessionStatus}
-        onToggleConnection={onToggleConnection}
-        isPTTActive={isPTTActive}
-        setIsPTTActive={setIsPTTActive}
-        isPTTUserSpeaking={isPTTUserSpeaking}
-        handleTalkButtonDown={handleTalkButtonDown}
-        handleTalkButtonUp={handleTalkButtonUp}
-        isEventsPaneExpanded={isEventsPaneExpanded}
-        setIsEventsPaneExpanded={setIsEventsPaneExpanded}
-        isAudioPlaybackEnabled={isAudioPlaybackEnabled}
-        setIsAudioPlaybackEnabled={setIsAudioPlaybackEnabled}
-        isAudioProcessingEnabled={isAudioProcessingEnabled}
-        onToggleAudioProcessing={handleToggleAudioProcessing}
-      />
     </div>
   );
 }
