@@ -1,180 +1,452 @@
-# Realtime API Agents Demo
+# Imperial Communications Terminal
 
-This is a simple demonstration of more advanced, agentic patterns built on top of the Realtime API. In particular, this demonstrates:
+A secure communications terminal that processes voice through an authentic stormtrooper helmet audio system. Features include:
 
-- Sequential agent handoffs according to a defined agent graph (taking inspiration from [OpenAI Swarm](https://github.com/openai/swarm))
-- Background escalation to more intelligent models like o1-mini for high-stakes decisions
-- Prompting models to follow a state machine, for example to accurately collect things like names and phone numbers with confirmation character by character to authenticate a user.
+- Real-time voice processing to simulate stormtrooper helmet acoustics
+- Authentic radio clicks and static effects
+- Push-to-talk functionality
+- Secure encrypted communications
 
-You should be able to use this repo to prototype your own multi-agent realtime voice app in less than 20 minutes!
+## Prerequisites
 
-![Screenshot of the Realtime API Agents Demo](/public/screenshot.png)
+### Cleaning Previous Node.js Installations
 
-## Setup
+1. Remove existing Node.js installations
 
-- This is a Next.js typescript app
-- Install dependencies with `npm i`
-- Add your `OPENAI_API_KEY` to your env
-- Start the server with `npm run dev`
-- Open your browser to [http://localhost:3000](http://localhost:3000) to see the app. It should automatically connect to the `simpleExample` Agent Set.
+   ```bash
+   # macOS
+   brew uninstall node
+   brew cleanup
+   # Remove global packages
+   rm -rf ~/.node-gyp
+   rm -rf ~/.npm
 
-## Configuring Agents
+   # Windows
+   # Use Control Panel to uninstall Node.js
+   # Then remove remaining directories:
+   rmdir /s /q %AppData%\npm
+   rmdir /s /q %AppData%\npm-cache
+   rmdir /s /q %UserProfile%\.node-gyp
+   
+   # Linux/Ubuntu
+   sudo apt remove nodejs npm
+   sudo apt purge nodejs npm
+   sudo apt autoremove
+   # Remove global packages
+   rm -rf ~/.node-gyp
+   rm -rf ~/.npm
+   ```
 
-Configuration in `src/app/agentConfigs/simpleExample.ts`
+2. Verify Node.js is completely removed
 
-```javascript
-import { AgentConfig } from "@/app/types";
-import { injectTransferTools } from "./utils";
+   ```bash
+   # These should all return "command not found"
+   node --version
+   npm --version
+   npx --version
+   ```
 
-// Define agents
-const haiku: AgentConfig = {
-  name: "haiku",
-  publicDescription: "Agent that writes haikus.", // Context for the agent_transfer tool
-  instructions:
-    "Ask the user for a topic, then reply with a haiku about that topic.",
-  tools: [],
+### Installing Node.js
+
+1. Install Node Version Manager (nvm)
+
+   ```bash
+   # macOS and Linux
+   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+
+   # Windows
+   # Download and run nvm-windows installer from:
+   # https://github.com/coreybutler/nvm-windows/releases
+   ```
+
+2. Restart your terminal, then verify nvm installation
+
+   ```bash
+   nvm --version
+   ```
+
+3. Install Node.js v20.18.1
+
+   ```bash
+   # Install the specific version
+   nvm install 20.18.1
+
+   # Set it as the default version
+   nvm use 20.18.1
+
+   # Verify installation
+   node --version  # Should output v20.18.1
+   npm --version
+   ```
+
+   Note: On Windows, use `nvm use 20.18.1` in an Administrator command prompt.
+
+## Installation
+
+1. Clone the repository
+
+   ```bash
+   git clone [repository-url]
+   cd [repository-name]
+   ```
+
+2. Set up environment variables
+
+   ```bash
+   # Create .env file
+   cp .env.example .env
+
+   # Edit .env file with your OpenAI API key
+   # macOS/Linux
+   nano .env
+   # Windows
+   notepad .env
+   ```
+
+   Required variables in `.env`:
+   ```bash
+   OPENAI_API_KEY=your_api_key_here
+   # Optional: Configure custom HTTPS port (default: 3443)
+   HTTPS_PORT=3443
+   ```
+
+3. Configure HTTPS for network access
+
+   ```bash
+   # Create certificates directory
+   mkdir certificates
+   cd certificates
+
+   # Generate self-signed certificate (macOS/Linux)
+   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+     -keyout private.key -out certificate.crt \
+     -subj "/CN=localhost"
+
+   # Windows (in PowerShell as Administrator)
+   New-SelfSignedCertificate -DnsName "localhost" `
+     -CertStoreLocation "cert:\LocalMachine\My" `
+     -NotAfter (Get-Date).AddYears(1)
+   # Export the certificate and key from Windows Certificate Manager
+   ```
+
+   Place the certificates in the `certificates` directory:
+   ```
+   certificates/
+   ├── private.key
+   └── certificate.crt
+   ```
+
+4. Add HTTPS script to package.json
+   ```bash
+   # Open package.json
+   nano package.json  # or your preferred editor
+   ```
+
+   Add the following to the "scripts" section:
+   ```json
+   {
+     "scripts": {
+       "dev": "next dev",
+       "dev:https": "node server.js",
+       "build": "next build",
+       "start": "next start"
+     }
+   }
+   ```
+
+5. Create HTTPS server configuration
+   ```bash
+   # Create server.js in project root
+   cat > server.js << 'EOL'
+const https = require('https');
+const fs = require('fs');
+const { parse } = require('url');
+const next = require('next');
+const os = require('os');
+const dns = require('dns');
+
+const dev = process.env.NODE_ENV !== 'production';
+const app = next({ dev });
+const handle = app.getRequestHandler();
+
+const httpsOptions = {
+  key: fs.readFileSync('./certificates/private.key'),
+  cert: fs.readFileSync('./certificates/certificate.crt')
 };
 
-const greeter: AgentConfig = {
-  name: "greeter",
-  publicDescription: "Agent that greets the user.",
-  instructions:
-    "Please greet the user and ask them if they'd like a Haiku. If yes, transfer them to the 'haiku' agent.",
-  tools: [],
-  downstreamAgents: [haiku],
-};
+const port = process.env.HTTPS_PORT || 3443;
 
-// add the transfer tool to point to downstreamAgents
-const agents = injectTransferTools([greeter, haiku]);
+// Get network interfaces
+function getNetworkInfo() {
+  const interfaces = os.networkInterfaces();
+  const addresses = [];
+  
+  for (const iface of Object.values(interfaces)) {
+    for (const addr of iface) {
+      // Skip internal and IPv6 addresses
+      if (!addr.internal && addr.family === 'IPv4') {
+        addresses.push(addr.address);
+      }
+    }
+  }
+  return addresses;
+}
 
-export default agents;
-```
+// Format hostname for local network
+function getFormattedHostname() {
+  const hostname = os.hostname();
+  // Add .local if it's not already there
+  return hostname.endsWith('.local') ? hostname : `${hostname}.local`;
+}
 
-This fully specifies the agent set that was used in the interaction shown in the screenshot above.
+app.prepare().then(() => {
+  // Get hostname
+  const formattedHostname = getFormattedHostname();
+  const addresses = getNetworkInfo();
+  
+  console.log('\nAvailable on:');
+  console.log(`  • Hostname: https://${formattedHostname}:${port}`);
+  addresses.forEach(addr => {
+    console.log(`  • IP Address: https://${addr}:${port}`);
+  });
+  console.log('\nNote: You may need to accept the self-signed certificate warning.');
 
-### Next steps
+  https.createServer(httpsOptions, (req, res) => {
+    const parsedUrl = parse(req.url, true);
+    handle(req, res, parsedUrl);
+  }).listen(port, '0.0.0.0', (err) => {
+    if (err) throw err;
+    console.log(`\n> Server started on port ${port}`);
+  });
+});
+EOL
 
-- Check out the configs in `src/app/agentConfigs`. The example above is a minimal demo that illustrates the core concepts.
-- [frontDeskAuthentication](src/app/agentConfigs/frontDeskAuthentication) Guides the user through a step-by-step authentication flow, confirming each value character-by-character, authenticates the user with a tool call, and then transfers to another agent. Note that the second agent is intentionally "bored" to show how to prompt for personality and tone.
-- [customerServiceRetail](src/app/agentConfigs/customerServiceRetail) Also guides through an authentication flow, reads a long offer from a canned script verbatim, and then walks through a complex return flow which requires looking up orders and policies, gathering user context, and checking with `o1-mini` to ensure the return is eligible. To test this flow, say that you'd like to return your snowboard and go through the necessary prompts!
-
-### Defining your own agents
-
-- You can copy these to make your own multi-agent voice app! Once you make a new agent set config, add it to `src/app/agentConfigs/index.ts` and you should be able to select it in the UI in the "Scenario" dropdown menu.
-- To see how to define tools and toolLogic, including a background LLM call, see [src/app/agentConfigs/customerServiceRetail/returns.ts](src/app/agentConfigs/customerServiceRetail/returns.ts)
-- To see how to define a detailed personality and tone, and use a prompt state machine to collect user information step by step, see [src/app/agentConfigs/frontDeskAuthentication/authentication.ts](src/app/agentConfigs/frontDeskAuthentication/authentication.ts)
-- To see how to wire up Agents into a single Agent Set, see [src/app/agentConfigs/frontDeskAuthentication/index.ts](src/app/agentConfigs/frontDeskAuthentication/index.ts)
-- If you want help creating your own prompt using these conventions, we've included a metaprompt [here](src/app/agentConfigs/voiceAgentMetaprompt.txt), or you can use our [Voice Agent Metaprompter GPT](https://chatgpt.com/g/g-678865c9fb5c81918fa28699735dd08e-voice-agent-metaprompt-gpt)
-
-## UI
-
-- You can select agent scenarios in the Scenario dropdown, and automatically switch to a specific agent with the Agent dropdown.
-- The conversation transcript is on the left, including tool calls, tool call responses, and agent changes. Click to expand non-message elements.
-- The event log is on the right, showing both client and server events. Click to see the full payload.
-- On the bottom, you can disconnect, toggle between automated voice-activity detection or PTT, turn off audio playback, and toggle logs.
-
-## Core Contributors
-
-- Noah MacCallum - [noahmacca](https://x.com/noahmacca)
-- Ilan Bigio - [ibigio](https://github.com/ibigio)
-
-## Custom Implementation: Stormtrooper Voice Game
-
-This repository is a fork of the [Realtime API Agents Demo](https://github.com/replit/realtime-agents-demo) that implements a Star Wars-themed interactive voice game featuring stormtrooper agents.
-
-### Development Workflow
-
-This project follows a specific branching strategy to maintain synchronization with the upstream repository while developing custom features:
-
-- `main` branch: Syncs with upstream main branch
-- `develop` branch: Main development branch for custom features
-- Feature branches: Created from `develop` for specific implementations
-
-To sync with upstream changes:
-
-```bash
-git fetch upstream
-git checkout main
-git merge upstream/main
-git checkout develop
-git merge main
-```
-
-### Custom Components
-
-Custom stormtrooper-specific implementations are organized in the following structure:
-
-- `src/app/agentConfigs/stormtrooper/` - Stormtrooper agent configurations
-- `src/app/agentConfigs/stormtrooper/modes/` - Different stormtrooper behavior modes
-- `src/app/agentConfigs/stormtrooper/prompts/` - Custom prompts and personality definitions
-
-For more details about the stormtrooper game mechanics and rules, see the [Stormtrooper Game Documentation](docs/STORMTROOPER.md).
-
-### Fork Setup and Maintenance
-
-To set up this fork for development:
-
-1. Clone your fork:
-
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/trooper5.git
-   cd trooper5
+   # Verify server.js was created
+   ls -l server.js
    ```
 
-2. Add upstream remote:
-
+   The file should be created in your project root directory. You can verify its contents with:
    ```bash
-   git remote add upstream https://github.com/replit/realtime-agents-demo.git
+   cat server.js
    ```
 
-3. Create development branch:
-
+   When you run the server, it will show all available network addresses:
    ```bash
-   git checkout -b develop
+   > Server started on port 3443
+
+   Available on:
+     • Hostname: https://your-computer-name.local:3443
+     • IP Address: https://192.168.1.100:3443
+     • IP Address: https://10.0.0.100:3443
+
+   Note: You may need to accept the self-signed certificate warning.
    ```
 
-4. Install dependencies and set up environment:
+6. Verify you're in the correct directory
 
    ```bash
+   # Confirm you're in the project directory
+   pwd  # Should show /path/to/[repository-name]
+   
+   # Verify package.json exists
+   ls package.json  # Should show package.json
+   ```
+
+7. Clean up old packages (if updating/reinstalling)
+
+   ```bash
+   # Remove old packages and lock file
+   rm -rf node_modules
+   rm package-lock.json
+
+   # Windows alternative
+   rmdir /s /q node_modules
+   del package-lock.json
+   ```
+
+8. Install dependencies
+
+   ```bash
+   # Clean npm cache (optional but recommended)
+   npm cache clean --force
+
+   # Install packages
    npm install
-   cp .env.example .env  # Then add your OPENAI_API_KEY
    ```
 
-### Development Process
-
-1. Create feature branches from `develop` for new features:
+   If you see "ENOENT: no such file or directory, open 'package.json'":
 
    ```bash
-   git checkout -b feature/new-stormtrooper-mode
+   # You're likely in the wrong directory. Check current location:
+   pwd
+
+   # Navigate to project directory:
+   cd /path/to/[repository-name]
+
+   # Verify package.json exists:
+   ls package.json
+
+   # Then try install again:
+   npm install
    ```
 
-2. Make changes following the structure in `Custom Components`
+## Running the Terminal
 
-3. Test changes:
-   - Run the development server: `npm run dev`
-   - Test in browser at <http://localhost:3000>
-   - Select "Stormtrooper" scenario from dropdown
-
-4. Commit changes with descriptive messages:
+1. Start the development server
 
    ```bash
-   git commit -m "feat: Add new stormtrooper patrol mode"
+   # Local development (HTTP)
+   npm run dev
+
+   # Network access (HTTPS)
+   npm run dev:https   # Runs on port 3443 by default
    ```
 
-5. Merge upstream changes when needed:
+2. Access the terminal
+   - Local development: http://localhost:3000
+   - Network access: https://[your-ip]:3443
 
+   Note: When accessing via HTTPS, you'll need to:
+   1. Accept the self-signed certificate warning in your browser
+   2. Grant microphone permissions
+   3. Ensure your firewall allows connections on port 3443
+
+## Usage
+
+1. Connect to the terminal using the "Connect" button
+2. Grant microphone permissions when prompted
+3. Use the following controls:
+   - **Push to talk**: Toggle for push-to-talk mode
+   - **Voice effect**: Toggle stormtrooper voice processing
+   - **Audio playback**: Toggle audio output
+   - **Logs**: View communication logs
+
+## Security Notice
+
+This terminal requires a secure connection. Always access via:
+
+- http://localhost:3000 (local development)
+- https://[your-ip]:3443 (network access)
+
+For network access, ensure:
+1. Your firewall allows incoming connections on port 3443
+2. The self-signed certificate is properly configured
+3. You're using HTTPS when accessing from other devices
+
+## Troubleshooting
+
+1. **Node.js Installation Issues**
+   - If `nvm` command is not found after installation, try:
+
+     ```bash
+     export NVM_DIR="$HOME/.nvm"
+     [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+     ```
+
+   - On Windows, ensure you're using an Administrator command prompt
+   - If you see permission errors, try running the commands with `sudo` (Unix/Linux)
+   - If you see "node already installed" errors:
+
+     ```bash
+     # List all Node.js versions managed by nvm
+     nvm ls
+     
+     # Remove a specific version
+     nvm uninstall <version>
+     
+     # Or remove all versions
+     nvm deactivate  # Stop using current version
+     rm -rf ~/.nvm/* # Unix/Linux
+     rmdir /s /q %UserProfile%\.nvm # Windows
+     ```
+
+2. **No audio processing**
+   - Ensure microphone permissions are granted
+   - Check that you're using a secure connection
+   - Verify audio playback is enabled
+
+3. **Connection issues**
+   - Confirm you're using the correct URL
+   - Check network connectivity
+   - Verify the server is running
+
+4. **HTTPS/Certificate Issues**
+   - If you see certificate warnings:
+     ```bash
+     # Verify certificate files exist
+     ls certificates/private.key certificates/certificate.crt
+
+     # Check certificate expiration
+     openssl x509 -in certificates/certificate.crt -noout -dates
+
+     # Verify certificate permissions
+     chmod 600 certificates/private.key
+     chmod 644 certificates/certificate.crt
+     ```
+   - If port 3443 is in use:
+     ```bash
+     # Check what's using the port
+     lsof -i :3443    # macOS/Linux
+     netstat -ano | findstr :3443  # Windows
+
+     # Change the port in .env
+     HTTPS_PORT=3444  # Or another available port
+     ```
+
+## Support
+
+For technical support, contact your local Imperial IT department.
+
+## Security Classification
+
+IMPERIAL RESTRICTED - Level 3 Clearance Required
+
+## Repository Structure
+
+This repository uses the following branching strategy:
+```
+main ................ Primary development branch with stormtrooper voice implementation
+upstream-main ....... Tracks the original source repository for updates
+feature/* .......... Feature branches for new development
+```
+
+### Managing Upstream Updates
+
+1. First-time setup (if you haven't already):
    ```bash
-   git fetch upstream
+   # Add the upstream repository
+   git remote add upstream https://github.com/original/repository.git
+
+   # Create upstream-main branch from current main
    git checkout main
-   git merge upstream/main
-   git checkout develop
-   git merge main
+   git checkout -b upstream-main
+   
+   # Reset main to be your working branch
+   git checkout main
    ```
 
-6. Push changes to your fork:
-
+2. To get updates from the source repository:
    ```bash
-   git push origin develop
+   # Fetch upstream changes
+   git fetch upstream
+
+   # Update upstream-main branch
+   git checkout upstream-main
+   git reset --hard upstream/main
+
+   # Return to your main branch
+   git checkout main
+
+   # Merge updates (resolve conflicts as needed)
+   git merge upstream-main
    ```
 
-For more details about implementing specific agent modes and behaviors, see the [Stormtrooper Game Documentation](docs/STORMTROOPER.md).
+3. For new features:
+   ```bash
+   # Create a feature branch
+   git checkout -b feature/new-feature
+
+   # After development, merge back to main
+   git checkout main
+   git merge feature/new-feature
+   ```
