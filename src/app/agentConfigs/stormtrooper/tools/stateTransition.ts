@@ -2,49 +2,58 @@ import { Tool } from '../../../types';
 
 export const stateTransitionTool: Tool = {
   type: "function",
-  name: "logCurrentState",
-  description: "Log the current conversation state and add a breadcrumb to the transcript",
+  name: "transitionState",
+  description: "Handles state transitions for the stormtrooper agent",
   parameters: {
     type: "object",
     properties: {
-      state_id: {
+      currentState: {
         type: "string",
-        description: "The ID of the current state"
+        description: "Current state of the agent"
       },
-      state_data: {
+      nextState: {
+        type: "string",
+        description: "State to transition to"
+      },
+      reason: {
+        type: "string",
+        description: "Reason for the state transition"
+      },
+      metrics: {
         type: "object",
-        description: "Additional state data to log",
+        description: "Current metrics triggering the transition",
         properties: {
-          description: { type: "string" },
-          instructions: { type: "array", items: { type: "string" } },
-          examples: { type: "array", items: { type: "string" } }
+          suspicionLevel: {
+            type: "number",
+            description: "Current suspicion level (0-100)"
+          },
+          jediInfluence: {
+            type: "number",
+            description: "Current Jedi influence level (0-100)"
+          }
         }
+      },
+      item_call_id: {
+        type: "string",
+        description: "Unique identifier for this transition"
       }
     },
-    required: ["state_id"]
+    required: ["currentState", "nextState", "reason", "item_call_id"],
+    additionalProperties: false
   }
 };
 
-export const stateTransitionLogic = async (args: { 
-  state_id: string, 
-  state_data?: {
-    description?: string;
-    instructions?: string[];
-    examples?: string[];
-  }
-}) => {
-  const stateMatch = args.state_id.match(/^([a-zA-Z0-9_]+)$/);
-  if (!stateMatch) {
-    return { 
-      success: false,
-      error: "Invalid state ID format" 
-    };
-  }
+export const stateTransitionLogic = async (args: any) => {
+  const { currentState, nextState, reason, metrics, item_call_id } = args;
 
   return {
+    previousState: currentState,
+    newState: nextState,
+    transitionReason: reason,
+    metrics: metrics || {},
     success: true,
-    state: args.state_id,
-    data: args.state_data,
-    message: `Transitioned to state: ${args.state_id}`
+    timestamp: new Date().toISOString(),
+    item_call_id,
+    event_id: item_call_id
   };
 }; 
