@@ -42,24 +42,23 @@ function Events({ isExpanded }: EventsProps) {
   };
 
   return (
-    <div className={`flex-1 flex flex-col bg-white dark:bg-imperial-black min-h-0 rounded-xl relative sw-scanline ${isExpanded ? 'w-1/2' : 'w-0 opacity-0'} transition-all duration-200`}>
-      <div className="imperial-bg"></div>
-      <div className="sw-grid absolute inset-0 opacity-10"></div>
+    <div className={`flex-1 flex flex-col bg-[#1A1A1A] min-h-0 relative sw-scanline h-full border border-[#B87A3D]/50`}>
+      <div className="sw-grid absolute inset-0 opacity-20"></div>
       <div className="flex flex-col h-full relative">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-imperial-gray">
+        <div className="flex items-center justify-between p-4 border-b border-[#B87A3D]/50">
           <div className="flex items-center gap-x-2">
             <Image 
               src="/Imperial_Emblem.svg" 
               alt="Imperial Emblem" 
               width={20} 
               height={20} 
-              className="invert"
+              className="invert opacity-80"
             />
-            <h2 className="text-gray-900 dark:text-imperial-white font-bold sw-terminal uppercase tracking-wider">System Logs</h2>
+            <h2 className="text-[#A3FF47] font-bold sw-terminal uppercase tracking-wider glow-green">System Logs</h2>
           </div>
           <button
             onClick={handleCopyLogs}
-            className={`text-sm px-3 py-2 rounded-sm bg-gray-200 dark:bg-imperial-gray hover:bg-gray-300 dark:hover:opacity-80 sw-terminal uppercase tracking-wider`}
+            className={`text-sm px-3 py-2 rounded-sm bg-[#1A1A1A] border border-[#B87A3D] hover:bg-[#B87A3D]/20 text-[#A3FF47] sw-terminal uppercase tracking-wider`}
           >
             {justCopied ? "Copied!" : "Copy"}
           </button>
@@ -81,28 +80,28 @@ function Events({ isExpanded }: EventsProps) {
               >
                 <div className="flex items-center gap-x-2">
                   <span className={`font-mono text-xs ${
-                    isError ? "text-imperial-red" : 
-                    isWarning ? "text-empire-gold" : 
-                    "text-gray-400 dark:text-imperial-gray"
+                    isError ? "text-red-500" : 
+                    isWarning ? "text-[#FFD700]" : 
+                    "text-[#B87A3D]"
                   } uppercase tracking-wider`}>
                     {log.timestamp}
                   </span>
                   <span className={`font-mono ${
-                    isError ? "text-imperial-red" : 
-                    isWarning ? "text-empire-gold" : 
-                    "text-gray-800 dark:text-imperial-white"
+                    isError ? "text-red-500" : 
+                    isWarning ? "text-[#FFD700]" : 
+                    "text-[#A3FF47]"
                   } uppercase tracking-wider`}>
                     {log.eventName}
                   </span>
                   {log.eventData && (
-                    <span className="text-gray-400 dark:text-imperial-gray cursor-pointer hover:text-empire-gold dark:hover:text-empire-gold">
+                    <span className="text-[#B87A3D] cursor-pointer hover:text-[#A3FF47]">
                       ▶
                     </span>
                   )}
                 </div>
                 {log.expanded && log.eventData && (
                   <div className="ml-4 mt-1">
-                    <pre className="whitespace-pre-wrap break-words font-mono text-xs text-gray-600 dark:text-imperial-white border-l border-imperial-red pl-2">
+                    <pre className="text-xs text-[#B87A3D] font-mono whitespace-pre-wrap">
                       {JSON.stringify(log.eventData, null, 2)}
                     </pre>
                   </div>

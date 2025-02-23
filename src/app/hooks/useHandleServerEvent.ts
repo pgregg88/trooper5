@@ -11,6 +11,8 @@ export interface UseHandleServerEventParams {
   selectedAgentConfigSet: AgentConfig[] | null;
   sendClientEvent: (eventObj: any, eventNameSuffix?: string) => void;
   setSelectedAgentName: (name: string) => void;
+  setIsAgentSpeaking: (speaking: boolean) => void;
+  setAgentSpeechEndTime: (time: number) => void;
   shouldForceResponse?: boolean;
 }
 
@@ -20,6 +22,8 @@ export function useHandleServerEvent({
   selectedAgentConfigSet,
   sendClientEvent,
   setSelectedAgentName,
+  setIsAgentSpeaking,
+  setAgentSpeechEndTime,
 }: UseHandleServerEventParams) {
   const {
     transcriptItems,
@@ -106,6 +110,17 @@ export function useHandleServerEvent({
     logServerEvent(serverEvent);
 
     switch (serverEvent.type) {
+      case "output_audio_buffer.started": {
+        setIsAgentSpeaking(true);
+        break;
+      }
+
+      case "output_audio_buffer.stopped": {
+        setIsAgentSpeaking(false);
+        setAgentSpeechEndTime(Date.now());
+        break;
+      }
+
       case "session.created": {
         if (serverEvent.session?.id) {
           setSessionStatus("CONNECTED");

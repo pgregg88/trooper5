@@ -47,6 +47,11 @@ function App() {
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
+
+  const [isAgentSpeaking, setIsAgentSpeaking] = useState<boolean>(false);
+  const [agentSpeechEndTime, setAgentSpeechEndTime] = useState<number>(0);
 
   const sendClientEvent = (eventObj: any, eventNameSuffix = "") => {
     if (dcRef.current && dcRef.current.readyState === "open") {
@@ -70,6 +75,8 @@ function App() {
     selectedAgentConfigSet,
     sendClientEvent,
     setSelectedAgentName,
+    setIsAgentSpeaking,
+    setAgentSpeechEndTime,
   });
 
   useEffect(() => {
@@ -137,23 +144,53 @@ function App() {
     return data.client_secret.value;
   };
 
+  const initializeAudioSystem = () => {
+    if (!audioElementRef.current) {
+      audioElementRef.current = document.createElement("audio");
+      
+      // Initialize audio context and gain node if not already initialized
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContext();
+        gainNodeRef.current = audioContextRef.current.createGain();
+        
+        // Create a short silent buffer for initialization
+        const silentBuffer = audioContextRef.current.createBuffer(1, 1024, audioContextRef.current.sampleRate);
+        const channelData = silentBuffer.getChannelData(0);
+        for (let i = 0; i < channelData.length; i++) {
+          channelData[i] = 0;
+        }
+        
+        // Set up audio graph
+        const source = audioContextRef.current.createBufferSource();
+        source.buffer = silentBuffer;
+        source.connect(gainNodeRef.current);
+        gainNodeRef.current.connect(audioContextRef.current.destination);
+        
+        // Start with low volume and ramp up
+        gainNodeRef.current.gain.setValueAtTime(0.1, audioContextRef.current.currentTime);
+        gainNodeRef.current.gain.linearRampToValueAtTime(1, audioContextRef.current.currentTime + 0.5);
+        
+        source.start();
+      }
+      
+      audioElementRef.current.autoplay = isAudioPlaybackEnabled;
+    }
+  };
+
   const connectToRealtime = async () => {
-    if (sessionStatus !== "DISCONNECTED") return;
     setSessionStatus("CONNECTING");
+    
+    // Initialize audio system before connection
+    initializeAudioSystem();
+    
+    const ephemeralKey = await fetchEphemeralKey();
+    if (!ephemeralKey) {
+      return;
+    }
 
     try {
-      const EPHEMERAL_KEY = await fetchEphemeralKey();
-      if (!EPHEMERAL_KEY) {
-        return;
-      }
-
-      if (!audioElementRef.current) {
-        audioElementRef.current = document.createElement("audio");
-      }
-      audioElementRef.current.autoplay = isAudioPlaybackEnabled;
-
       const { pc, dc, toggleAudioProcessing } = await createRealtimeConnection(
-        EPHEMERAL_KEY,
+        ephemeralKey,
         audioElementRef
       );
       pcRef.current = pc;
@@ -250,13 +287,21 @@ function App() {
       (a) => a.name === selectedAgentName
     );
 
-    const turnDetection = isPTTActive
+    // Detect if we're on mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    // Only enable VAD if agent is not speaking and cooldown period has passed
+    const cooldownPeriod = 1000; // 1 second cooldown after agent stops speaking
+    const canEnableVAD = !isAgentSpeaking && (Date.now() - agentSpeechEndTime) > cooldownPeriod;
+
+    // Adjust VAD settings based on device type and speaking state
+    const turnDetection = isPTTActive || !canEnableVAD
       ? null
       : {
           type: "server_vad",
-          threshold: vadThreshold,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 200,
+          threshold: isMobile ? vadThreshold * 0.5 : vadThreshold,
+          prefix_padding_ms: isMobile ? 500 : 300,
+          silence_duration_ms: isMobile ? 400 : 200,
           create_response: true,
         };
 
@@ -419,71 +464,49 @@ function App() {
   useEffect(() => {
     if (audioElementRef.current) {
       if (isAudioPlaybackEnabled) {
+        // Ensure audio context is running
+        if (audioContextRef.current?.state === 'suspended') {
+          audioContextRef.current.resume();
+        }
+        
+        // Set gain to normal level
+        if (gainNodeRef.current) {
+          gainNodeRef.current.gain.setValueAtTime(1, audioContextRef.current?.currentTime || 0);
+        }
+        
         audioElementRef.current.play().catch((err) => {
           console.warn("Autoplay may be blocked by browser:", err);
         });
       } else {
         audioElementRef.current.pause();
+        // Reduce gain to zero when disabled
+        if (gainNodeRef.current && audioContextRef.current) {
+          gainNodeRef.current.gain.setValueAtTime(0, audioContextRef.current.currentTime);
+        }
       }
     }
   }, [isAudioPlaybackEnabled]);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100 dark:bg-imperial-black relative sw-scanline">
-      <div className="sw-grid absolute inset-0 opacity-10 pointer-events-none"></div>
-      <header className="flex items-center justify-between px-6 py-4 bg-white dark:bg-imperial-black border-b border-gray-200 dark:border-imperial-gray relative z-10">
+    <div className="flex flex-col h-screen bg-black relative sw-scanline max-w-[100vw] overflow-x-hidden">
+      <div className="sw-grid absolute inset-0 opacity-20 pointer-events-none"></div>
+      <header className="flex items-center justify-center px-4 sm:px-6 py-4 bg-[#1A1A1A] border-b border-[#B87A3D] relative z-10">
         <div className="flex items-center gap-x-4">
           <Image
             src="/Imperial_Emblem.svg"
             alt="Imperial Emblem"
             width={32}
             height={32}
-            className="invert"
+            className="invert opacity-80"
           />
-          <h1 className="text-xl font-bold text-gray-900 dark:text-imperial-white sw-terminal uppercase tracking-wider">
+          <h1 className="text-lg sm:text-xl font-bold text-[#A3FF47] sw-terminal uppercase tracking-wider glow-green">
             Imperial Intelligence Terminal
           </h1>
         </div>
-        <div className="flex items-center gap-x-4">
-          <select
-            value={searchParams.get("agentConfig") || defaultAgentSetKey}
-            onChange={handleAgentChange}
-            className="px-4 py-2 rounded-sm border border-gray-200 dark:border-imperial-gray bg-white dark:bg-imperial-black text-gray-900 dark:text-imperial-white sw-terminal uppercase tracking-wider focus:outline-none focus:ring-1 focus:ring-imperial-red"
-          >
-            {Object.keys(allAgentSets).map((agentKey) => (
-              <option key={agentKey} value={agentKey}>
-                {agentKey}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedAgentName}
-            onChange={handleSelectedAgentChange}
-            className="px-4 py-2 rounded-sm border border-gray-200 dark:border-imperial-gray bg-white dark:bg-imperial-black text-gray-900 dark:text-imperial-white sw-terminal uppercase tracking-wider focus:outline-none focus:ring-1 focus:ring-imperial-red"
-          >
-            {selectedAgentConfigSet?.map(agent => (
-              <option key={agent.name} value={agent.name}>
-                {agent.name}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={onToggleConnection}
-            className="p-2 rounded-sm bg-gray-200 dark:bg-imperial-gray hover:bg-gray-300 dark:hover:opacity-80 sw-terminal uppercase tracking-wider"
-          >
-            {sessionStatus === "CONNECTED" ? "Disconnect" : "Connect"}
-          </button>
-          <button
-            onClick={() => setIsEventsPaneExpanded(!isEventsPaneExpanded)}
-            className="p-2 rounded-sm bg-gray-200 dark:bg-imperial-gray hover:bg-gray-300 dark:hover:opacity-80 sw-terminal uppercase tracking-wider"
-          >
-            {isEventsPaneExpanded ? "Hide Logs" : "Show Logs"}
-          </button>
-        </div>
       </header>
 
-      <main className="flex-1 flex overflow-hidden p-6 gap-x-6 relative z-10">
-        <div className={`flex-1 flex ${isEventsPaneExpanded ? 'w-1/2' : 'w-full'} transition-all duration-200`}>
+      <main className="flex-1 flex flex-col sm:flex-row overflow-hidden p-4 sm:p-6 gap-4 sm:gap-6 relative z-10 bg-[#1A1A1A]/80">
+        <div className={`flex-1 flex min-h-0 ${isEventsPaneExpanded ? 'sm:w-1/2' : 'w-full'} transition-all duration-200`}>
           <Transcript
             userText={userText}
             setUserText={setUserText}
@@ -494,12 +517,36 @@ function App() {
             }
           />
         </div>
-        <Events
-          isExpanded={isEventsPaneExpanded}
-        />
+        {isEventsPaneExpanded && (
+          <div className="flex-1 min-h-[300px] sm:min-h-0 border border-[#B87A3D]/50">
+            <Events
+              isExpanded={true}
+            />
+          </div>
+        )}
       </main>
 
-      <div className="relative z-10">
+      <style jsx global>{`
+        .glow-green {
+          text-shadow: 0 0 10px rgba(163, 255, 71, 0.5);
+        }
+        .sw-terminal {
+          font-family: "Share Tech Mono", monospace;
+        }
+        .sw-scanline {
+          background: linear-gradient(to bottom, rgba(255,255,255,0.03) 50%, transparent 50%);
+          background-size: 100% 4px;
+          background-repeat: repeat;
+        }
+        .sw-grid {
+          background-image: 
+            linear-gradient(to right, rgba(184, 122, 61, 0.1) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(184, 122, 61, 0.1) 1px, transparent 1px);
+          background-size: 20px 20px;
+        }
+      `}</style>
+
+      <div className="relative z-10 bg-[#1A1A1A] border-t border-[#B87A3D]">
         <BottomToolbar
           sessionStatus={sessionStatus}
           onToggleConnection={onToggleConnection}
@@ -516,6 +563,13 @@ function App() {
           onToggleAudioProcessing={onToggleAudioProcessing}
           vadThreshold={vadThreshold}
           setVadThreshold={setVadThreshold}
+          selectedAgentName={selectedAgentName}
+          selectedAgentConfigSet={selectedAgentConfigSet}
+          currentAgentConfig={searchParams.get("agentConfig") || defaultAgentSetKey}
+          defaultAgentSetKey={defaultAgentSetKey}
+          onAgentChange={handleAgentChange}
+          onSelectedAgentChange={handleSelectedAgentChange}
+          allAgentSets={allAgentSets}
         />
       </div>
     </div>
