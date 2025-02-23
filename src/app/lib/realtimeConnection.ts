@@ -53,6 +53,11 @@ export async function createRealtimeConnection(
     // Handle audio buffer events
     if (audioProcessor.isActive()) {
       if (data.type === "output_audio_buffer.started") {
+        // Add a small delay before playing the first audio
+        if (!audioProcessor.hasPlayedFirstAudio) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          audioProcessor.hasPlayedFirstAudio = true;
+        }
         await audioProcessor.playMicClick(true);
       } else if (data.type === "output_audio_buffer.stopped") {
         await audioProcessor.playMicClick(false);

@@ -7,6 +7,7 @@ export class SimpleAudioProcessor {
   private isProcessing: boolean = false;
   private currentStream: MediaStream | null = null;
   private currentAudioElement: RefObject<HTMLAudioElement> | null = null;
+  public hasPlayedFirstAudio: boolean = false;
 
   // Filter nodes
   private highpassFilter: BiquadFilterNode | null = null;
@@ -280,6 +281,9 @@ export class SimpleAudioProcessor {
         // Small delay to allow click to play
         await new Promise(resolve => setTimeout(resolve, this.PARAMS.clickDuration * 1000));
       }
+
+      // Reset first audio flag
+      this.hasPlayedFirstAudio = false;
 
       // Disconnect all nodes
       if (this.source) this.source.disconnect();

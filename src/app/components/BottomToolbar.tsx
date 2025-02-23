@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { SessionStatus } from "../types";
 
@@ -52,6 +54,11 @@ function BottomToolbar({
 }: BottomToolbarProps) {
   const isConnected = sessionStatus === "CONNECTED";
   const isConnecting = sessionStatus === "CONNECTING";
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+  }, []);
 
   function getConnectionButtonLabel() {
     if (isConnected) return "Disconnect";
@@ -155,7 +162,6 @@ function BottomToolbar({
             <label className="text-sm text-[#A3FF47] uppercase tracking-wider">Mic Sensitivity:</label>
             <div className="flex gap-x-1">
               {[0.1, 0.3, 0.6].map((value) => {
-                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
                 const label = isMobile
                   ? value === 0.1 ? "VERY LOW" : value === 0.3 ? "LOW" : "MED"
                   : value === 0.1 ? "LOW" : value === 0.3 ? "MED" : "HIGH";
