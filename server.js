@@ -1,10 +1,8 @@
 import https from 'https';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
 import { parse } from 'url';
 import next from 'next';
 import os from 'os';
-import dns from 'dns';
 
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
