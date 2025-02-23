@@ -415,14 +415,11 @@ feature/* .......... Feature branches for new development
 1. First-time setup (if you haven't already):
    ```bash
    # Add the upstream repository
-   git remote add upstream https://github.com/original/repository.git
+   git remote add upstream https://github.com/replit/realtime-agents-demo.git
 
-   # Create upstream-main branch from current main
-   git checkout main
-   git checkout -b upstream-main
-   
-   # Reset main to be your working branch
-   git checkout main
+   # Ensure upstream-main is tracking upstream
+   git checkout upstream-main
+   git reset --hard upstream/main
    ```
 
 2. To get updates from the source repository:
