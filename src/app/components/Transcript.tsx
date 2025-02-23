@@ -68,12 +68,12 @@ function Transcript({
 
   return (
     <div className="flex flex-col flex-1 bg-white dark:bg-imperial-black min-h-0 rounded-xl relative sw-scanline">
-      <div className="imperial-bg"></div>
-      <div className="sw-grid absolute inset-0 opacity-10"></div>
-      <div className="relative flex-1 min-h-0">
+      <div className="imperial-bg pointer-events-none"></div>
+      <div className="sw-grid absolute inset-0 opacity-10 pointer-events-none"></div>
+      <div className="relative flex-1 min-h-0 z-10">
         <button
           onClick={handleCopyTranscript}
-          className={`absolute w-20 top-3 right-2 mr-1 z-10 text-sm px-3 py-2 rounded-sm bg-gray-200 dark:bg-imperial-gray hover:bg-gray-300 dark:hover:opacity-80 sw-terminal uppercase tracking-wider`}
+          className={`absolute w-20 top-3 right-2 mr-1 z-20 text-sm px-3 py-2 rounded-sm bg-gray-200 dark:bg-imperial-gray hover:bg-gray-300 dark:hover:opacity-80 sw-terminal uppercase tracking-wider`}
         >
           {justCopied ? "Copied!" : "Copy"}
         </button>
@@ -162,7 +162,7 @@ function Transcript({
         </div>
       </div>
 
-      <div className="p-4 flex items-center gap-x-2 flex-shrink-0 border-t border-gray-200 dark:border-imperial-gray">
+      <div className="p-4 flex items-center gap-x-2 flex-shrink-0 border-t border-gray-200 dark:border-imperial-gray relative z-20">
         <input
           ref={inputRef}
           type="text"
