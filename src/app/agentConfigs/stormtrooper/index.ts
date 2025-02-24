@@ -3,6 +3,7 @@ import { baseMode } from './modes/base';
 import { interrogationMode } from './modes/interrogation';
 import { jediInfluenceMode } from './modes/jediInfluence';
 import { injectTransferTools } from '../utils';
+import { authentication } from '../trooper/authentication';
 
 // Connect the modes bidirectionally
 baseMode.downstreamAgents = [interrogationMode, jediInfluenceMode];
