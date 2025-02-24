@@ -94,9 +94,9 @@ This is a multi-agent, interactive stormtrooper simulation game that interacts w
 
 The game is implemented using the Realtime API Agents Demo framework with custom extensions:
 
-- Custom agent configurations in `src/app/agentConfigs/stormtrooper/`
-- Mode-specific behavior definitions in `src/app/agentConfigs/stormtrooper/modes/`
-- Personality and prompt templates in `src/app/agentConfigs/stormtrooper/prompts/`
+- Custom agent configurations in `src/app/agentConfigs/trooper/`
+- Mode-specific behavior definitions in `src/app/agentConfigs/trooper/modes/`
+- Personality and prompt templates in `src/app/agentConfigs/trooper/prompts/`
 
 ## Development Guidelines
 
