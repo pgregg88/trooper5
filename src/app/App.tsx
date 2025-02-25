@@ -178,33 +178,40 @@ function App() {
   };
 
   const connectToRealtime = async () => {
+    if (sessionStatus !== "DISCONNECTED") return;
     setSessionStatus("CONNECTING");
-    
-    // Initialize audio system before connection
-    initializeAudioSystem();
-    
-    const ephemeralKey = await fetchEphemeralKey();
-    if (!ephemeralKey) {
-      return;
-    }
 
     try {
+      const EPHEMERAL_KEY = await fetchEphemeralKey();
+      if (!EPHEMERAL_KEY) {
+        setSessionStatus("DISCONNECTED");
+        return;
+      }
+
+      // Initialize audio system first
+      initializeAudioSystem();
+
       const { pc, dc, toggleAudioProcessing } = await createRealtimeConnection(
-        ephemeralKey,
-        audioElementRef
+        EPHEMERAL_KEY,
+        audioElementRef,
+        isAudioProcessingEnabled
       );
       pcRef.current = pc;
       dcRef.current = dc;
       setToggleAudioProcessingFn(() => toggleAudioProcessing);
 
+      // Add event listeners before setting connection state
       dc.addEventListener("open", () => {
         logClientEvent({}, "data_channel.open");
+        setSessionStatus("CONNECTED"); // Move here from createRealtimeConnection
       });
       dc.addEventListener("close", () => {
         logClientEvent({}, "data_channel.close");
+        setSessionStatus("DISCONNECTED");
       });
       dc.addEventListener("error", (err: any) => {
         logClientEvent({ error: err }, "data_channel.error");
+        setSessionStatus("DISCONNECTED");
       });
       dc.addEventListener("message", (e: MessageEvent) => {
         handleServerEventRef.current(JSON.parse(e.data));
@@ -400,8 +407,19 @@ function App() {
 
   const onToggleAudioProcessing = async () => {
     if (toggleAudioProcessingFn) {
-      const isEnabled = await toggleAudioProcessingFn();
-      setIsAudioProcessingEnabled(isEnabled);
+      try {
+        const isEnabled = await toggleAudioProcessingFn();
+        console.log('Audio processing toggled:', isEnabled);
+        setIsAudioProcessingEnabled(isEnabled);
+        
+        // Save to localStorage
+        localStorage.setItem(
+          "audioProcessingEnabled",
+          isEnabled.toString()
+        );
+      } catch (error) {
+        console.error('Error toggling audio processing:', error);
+      }
     }
   };
 

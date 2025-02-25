@@ -131,10 +131,26 @@ function validateCode(code: string): boolean {
 async function verifyWithHQ(args: {
   officerName: string,
   claimedRank: string,
+  clearanceCode: string,
   missionDetails: string,
   item_call_id: string
 }): Promise<VerificationResult> {
   try {
+    // Validate clearance code format first
+    if (!validateCode(args.clearanceCode)) {
+      return {
+        verified: false,
+        authorityLevel: 0,
+        reason: "Invalid clearance code format",
+        verificationState: VERIFICATION_STATES.FAILED,
+        challengeQuestion: "Please provide a valid clearance code in format T-H-X-#-#-#-#",
+        statusUpdate: STATUS_MESSAGES.failed,
+        recommendations: ["Verify clearance code format", "Report suspicious activity"],
+        item_call_id: args.item_call_id,
+        event_id: args.item_call_id
+      };
+    }
+
     // First verify credentials
     const messages = [
       { role: "system", content: VERIFICATION_PROMPT },
@@ -143,6 +159,7 @@ async function verifyWithHQ(args: {
         content: `
 NAME: ${args.officerName}
 RANK: ${args.claimedRank}
+CLEARANCE: ${args.clearanceCode}
 MISSION REPORT: ${args.missionDetails}
         `.trim()
       }
@@ -178,6 +195,7 @@ Additional verification required:
     });
 
     if (!result.ok) {
+      console.error('Verification API error:', await result.text());
       throw new Error('Verification service unavailable');
     }
 
@@ -201,7 +219,7 @@ Additional verification required:
         reason: reason,
         verificationState: VERIFICATION_STATES.COMPLETE,
         challengeQuestion: followUp || null,
-        statusUpdate: STATUS_MESSAGES.COMPLETE.replace('{rank}', args.claimedRank),
+        statusUpdate: STATUS_MESSAGES.complete.replace('{rank}', args.claimedRank),
         recommendations: [
           "Credentials verified",
           "Access granted",
@@ -221,7 +239,7 @@ Additional verification required:
         reason: reason,
         verificationState: VERIFICATION_STATES.FAILED,
         challengeQuestion: followUp || null,
-        statusUpdate: STATUS_MESSAGES.FAILED,
+        statusUpdate: STATUS_MESSAGES.failed,
         recommendations: [
           "Credentials rejected",
           "Security protocols engaged",
@@ -295,7 +313,7 @@ export const imperialVerificationLogic = async (args: any): Promise<Verification
       reason: "Unrecognized Imperial rank",
       verificationState: VERIFICATION_STATES.FAILED,
       challengeQuestion: null,
-      statusUpdate: STATUS_MESSAGES.FAILED,
+      statusUpdate: STATUS_MESSAGES.failed,
       recommendations: ["Initiate security protocol"],
       item_call_id,
       event_id: item_call_id
@@ -310,7 +328,7 @@ export const imperialVerificationLogic = async (args: any): Promise<Verification
       reason: "Awaiting clearance code",
       verificationState: VERIFICATION_STATES.AWAITING_CODE,
       challengeQuestion: "State your clearance code.",
-      statusUpdate: STATUS_MESSAGES.INITIAL,
+      statusUpdate: STATUS_MESSAGES.initial,
       recommendations: ["Awaiting clearance code verification"],
       item_call_id,
       event_id: item_call_id
@@ -323,15 +341,15 @@ export const imperialVerificationLogic = async (args: any): Promise<Verification
       authorityLevel,
       reason: "Invalid clearance code format",
       verificationState: VERIFICATION_STATES.AWAITING_CODE,
-      challengeQuestion: "Repeat your clearance code.",
-      statusUpdate: STATUS_MESSAGES.AWAITING_CODE,
+      challengeQuestion: "Repeat your clearance code with correct format.",
+      statusUpdate: STATUS_MESSAGES.awaiting_code,
       recommendations: ["Invalid clearance code format"],
       item_call_id,
       event_id: item_call_id
     };
   }
 
-  // Step 3: Mission Details
+  // Step 3: Mission Details Check
   if (!missionDetails) {
     return {
       verified: false,
@@ -339,7 +357,7 @@ export const imperialVerificationLogic = async (args: any): Promise<Verification
       reason: "Awaiting mission details",
       verificationState: VERIFICATION_STATES.AWAITING_MISSION,
       challengeQuestion: "Report your last mission details.",
-      statusUpdate: STATUS_MESSAGES.AWAITING_MISSION,
+      statusUpdate: STATUS_MESSAGES.awaiting_mission,
       recommendations: ["Awaiting mission report"],
       item_call_id,
       event_id: item_call_id
@@ -351,23 +369,20 @@ export const imperialVerificationLogic = async (args: any): Promise<Verification
     return await verifyWithHQ({
       officerName,
       claimedRank,
+      clearanceCode,
       missionDetails,
       item_call_id
     });
   } catch (error) {
-    console.error('Verification process error:', error);
+    console.error('Verification error:', error);
     return {
       verified: false,
-      authorityLevel: 0,
-      reason: "Verification system error",
+      authorityLevel,
+      reason: "Communication disruption with Imperial HQ",
       verificationState: VERIFICATION_STATES.FAILED,
       challengeQuestion: null,
-      statusUpdate: "Imperial HQ communication disrupted. Stand by.",
-      recommendations: [
-        "System temporarily unavailable",
-        "Retry verification later",
-        "Report system status"
-      ],
+      statusUpdate: STATUS_MESSAGES.failed,
+      recommendations: ["Stand by for retry", "Report communication failure"],
       item_call_id,
       event_id: item_call_id
     };

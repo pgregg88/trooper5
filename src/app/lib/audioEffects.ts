@@ -195,14 +195,19 @@ export class SimpleAudioProcessor {
     }
   }
 
-  async connectStream(stream: MediaStream, audioElement: RefObject<HTMLAudioElement>) {
-    this.currentStream = stream;
-    this.currentAudioElement = audioElement;
-
+  async processOutputAudio(stream: MediaStream, audioElement: RefObject<HTMLAudioElement>) {
     try {
+      // Disconnect existing processing chain if any
+      await this.disconnect();
+      
+      this.currentStream = stream;
+      this.currentAudioElement = audioElement;
+
       // Create audio context if needed
       if (!this.audioContext) {
         this.audioContext = new AudioContext();
+      } else if (this.audioContext.state === 'suspended') {
+        await this.audioContext.resume();
       }
 
       // Create nodes
@@ -257,6 +262,9 @@ export class SimpleAudioProcessor {
       // Set audio element source
       if (audioElement.current) {
         audioElement.current.srcObject = this.destination.stream;
+        await audioElement.current.play().catch(err => {
+          console.warn('Autoplay prevented:', err);
+        });
       }
 
       this.isProcessing = true;
@@ -270,6 +278,7 @@ export class SimpleAudioProcessor {
       if (audioElement.current) {
         audioElement.current.srcObject = stream;
       }
+      this.isProcessing = false;
     }
   }
 
@@ -286,31 +295,46 @@ export class SimpleAudioProcessor {
       this.hasPlayedFirstAudio = false;
 
       // Disconnect all nodes
-      if (this.source) this.source.disconnect();
-      if (this.highpassFilter) this.highpassFilter.disconnect();
-      if (this.lowpassFilter) this.lowpassFilter.disconnect();
-      if (this.resonance1) this.resonance1.disconnect();
-      if (this.resonance2) this.resonance2.disconnect();
-      if (this.gainNode) this.gainNode.disconnect();
+      if (this.source) {
+        this.source.disconnect();
+        this.source = null;
+      }
+      if (this.highpassFilter) {
+        this.highpassFilter.disconnect();
+        this.highpassFilter = null;
+      }
+      if (this.lowpassFilter) {
+        this.lowpassFilter.disconnect();
+        this.lowpassFilter = null;
+      }
+      if (this.resonance1) {
+        this.resonance1.disconnect();
+        this.resonance1 = null;
+      }
+      if (this.resonance2) {
+        this.resonance2.disconnect();
+        this.resonance2 = null;
+      }
+      if (this.gainNode) {
+        this.gainNode.disconnect();
+        this.gainNode = null;
+      }
+      if (this.destination) {
+        this.destination.disconnect();
+        this.destination = null;
+      }
 
       // Return to direct connection if we have a stream
       if (this.currentAudioElement?.current && this.currentStream) {
         this.currentAudioElement.current.srcObject = this.currentStream;
       }
+      
       this.isProcessing = false;
       console.log('Stormtrooper voice effect disabled');
     } catch (error) {
       console.error('Error disconnecting audio processor:', error);
+      this.isProcessing = false;
     }
-  }
-
-  async toggle() {
-    if (this.isProcessing) {
-      await this.disconnect();
-    } else if (this.currentStream && this.currentAudioElement) {
-      await this.connectStream(this.currentStream, this.currentAudioElement);
-    }
-    return this.isProcessing;
   }
 
   isActive(): boolean {
